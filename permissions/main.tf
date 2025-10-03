@@ -38,3 +38,9 @@ resource "aws_iam_user_policy_attachment" "jeremie_readonly" {
 resource "aws_iam_access_key" "jeremie" {
   user = aws_iam_user.jeremie.name
 }
+
+resource "aws_iam_user_login_profile" "jeremie_console" {
+  user                    = aws_iam_user.jeremie.name
+  password_length         = 20
+  password_reset_required = true
+}
