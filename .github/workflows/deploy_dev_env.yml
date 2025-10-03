@@ -27,6 +27,17 @@ jobs:
           role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/GitHubActionsRole
           aws-region: eu-west-3
 
+      # --- DEBUG IAM (Piste A) ---
+      - name: Who am I? (STS)
+        run: aws sts get-caller-identity
+
+      - name: Show attached policies
+        run: aws iam list-attached-role-policies --role-name GitHubActionsRole
+
+      - name: Direct EKS call (debug)
+        run: aws eks describe-cluster --name tmgr-eks --region eu-west-3 || true
+      # ---------------------------
+
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
@@ -46,5 +57,3 @@ jobs:
 
       - name: Terraform Apply
         run: terraform apply -var-file=dev.tfvars -auto-approve
-
-
