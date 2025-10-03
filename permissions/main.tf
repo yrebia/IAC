@@ -104,7 +104,11 @@ resource "aws_iam_role_policy" "terraform_policy" {
           "ec2:CreateInternetGateway",
           "ec2:AttachInternetGateway",
           "ec2:DetachInternetGateway",
-          "ec2:DeleteInternetGateway"
+          "ec2:DeleteInternetGateway",
+          "iam:GetUser",
+          "iam:ListAccessKeys",
+          "iam:GetLoginProfile",
+          "iam:ListAttachedUserPolicies"
         ]
         Resource = "*"
       }
