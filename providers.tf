@@ -24,12 +24,6 @@ provider "aws" {
   region = var.region
 }
 
-variable "cluster_name" {
-  type        = string
-  description = "Nom du cluster EKS"
-  default     = "tmgr-eks"
-}
-
 data "aws_eks_cluster" "this" {
   name = var.cluster_name
 }
