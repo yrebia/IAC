@@ -2,13 +2,10 @@ name: Deploy Dev Environment
 
 on:
   push:
-    branches:
-      - dev
-    tags:
-      - 'v*.*.*'
+    branches: [dev]
+    tags: ['v*.*.*']
   pull_request:
-    branches:
-      - dev
+    branches: [dev]
 
 jobs:
   deploy:
@@ -40,6 +37,12 @@ jobs:
 
       - name: Terraform Validate
         run: terraform validate
+
+      - name: Import Helm release "task-manager" if needed
+        shell: bash
+        run: |
+          terraform state show helm_release.task_manager >/dev/null 2>&1 || \
+          terraform import helm_release.task_manager app/task-manager
 
       - name: Terraform Plan
         run: terraform plan -var-file=dev.tfvars
