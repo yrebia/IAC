@@ -10,6 +10,17 @@ output "jeremie_secret_access_key" {
   description = "Secret key for Jeremie"
 }
 
+output "jeremie_console_username" {
+  value       = aws_iam_user.jeremie.name
+  description = "IAM console username for Jeremie"
+}
+
+output "jeremie_console_password" {
+  value       = aws_iam_user_login_profile.jeremie_console.password
+  sensitive   = true
+  description = "Initial console password for Jeremie"
+}
+
 resource "aws_iam_access_key" "students" {
   for_each = aws_iam_user.students
   user     = each.value.name
@@ -32,4 +43,3 @@ output "students_secret_access_keys" {
   sensitive   = true
   description = "Secret keys for all students"
 }
-

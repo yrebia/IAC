@@ -39,6 +39,12 @@ resource "aws_iam_access_key" "jeremie" {
   user = aws_iam_user.jeremie.name
 }
 
+resource "aws_iam_user_login_profile" "jeremie_console" {
+  user                    = aws_iam_user.jeremie.name
+  password_length         = 20
+  password_reset_required = true
+}
+
 resource "aws_iam_openid_connect_provider" "github" {
   url             = "https://token.actions.githubusercontent.com"
   client_id_list  = ["sts.amazonaws.com"]
@@ -98,7 +104,11 @@ resource "aws_iam_role_policy" "terraform_policy" {
           "ec2:CreateInternetGateway",
           "ec2:AttachInternetGateway",
           "ec2:DetachInternetGateway",
-          "ec2:DeleteInternetGateway"
+          "ec2:DeleteInternetGateway",
+          "iam:GetUser",
+          "iam:ListAccessKeys",
+          "iam:GetLoginProfile",
+          "iam:ListAttachedUserPolicies"
         ]
         Resource = "*"
       }
