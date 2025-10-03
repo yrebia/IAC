@@ -1,13 +1,8 @@
 # --- K8s namespace + Helm release ---
-resource "kubernetes_namespace" "app" {
-  metadata {
-    name = "app"
-  }
-}
 
 resource "helm_release" "task_manager" {
   name             = "task-manager"
-  namespace        = kubernetes_namespace.app.metadata[0].name
+  namespace        = "app" 
   chart            = "${path.module}/charts/task-manager"
   create_namespace = false
 
