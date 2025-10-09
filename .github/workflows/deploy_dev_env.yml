@@ -15,7 +15,7 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     env:
-      TF_INPUT: "false"          # pas d'invite interactive
+      TF_INPUT: "false"
       TF_IN_AUTOMATION: "true"
 
     steps:
@@ -45,7 +45,6 @@ jobs:
       - name: Terraform Validate
         run: terraform validate -no-color
 
-      # Import idempotent de la release Helm existante (si déjà installée à la main)
       - name: Import Helm release "task-manager" if needed
         shell: bash
         run: |
