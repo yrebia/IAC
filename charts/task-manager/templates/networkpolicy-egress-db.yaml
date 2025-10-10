@@ -1,0 +1,21 @@
+{{- if and .Values.networkPolicy.allowDB.enabled (gt (len .Values.networkPolicy.allowDB.cidrs) 0) }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "task-manager.fullname" . }}-allow-db
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "task-manager.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  policyTypes: ["Egress"]
+  egress:
+    - to:
+        {{- range .Values.networkPolicy.allowDB.cidrs }}
+        - ipBlock:
+            cidr: {{ . | quote }}
+        {{- end }}
+      ports:
+        - protocol: TCP
+          port: 5432
+{{- end }}
