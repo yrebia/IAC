@@ -16,7 +16,8 @@ resource "helm_release" "task_manager" {
   cleanup_on_fail = true
 
   depends_on = [
-    kubernetes_namespace.app
+    kubernetes_namespace.app,
+    kubernetes_secret.db
   ]
 }
 
