@@ -20,8 +20,7 @@ jobs:
       contents: read
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
@@ -42,6 +41,23 @@ jobs:
 
       - name: Terraform Validate
         run: terraform validate -no-color
+
+      - name: Terraform Auto-Import Namespace (idempotent)
+        env:
+          TF_IN_AUTOMATION: "1"
+        run: |
+          set -euo pipefail
+          if ! terraform state list | grep -q '^kubernetes_namespace\.app$'; then
+            echo "Namespace 'app' pas encore dans le state: tentative d'import…"
+            terraform import \
+              -var-file=dev.tfvars \
+              -input=false \
+              -lock-timeout=5m \
+              kubernetes_namespace.app app \
+              || echo "Import non effectué (namespace absent) : il sera créé par terraform apply."
+          else
+            echo "Namespace 'app' déjà suivi par Terraform: rien à faire."
+          fi
 
       - name: Terraform Plan
         run: terraform plan -var-file=dev.tfvars -lock-timeout=5m -no-color
