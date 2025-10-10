@@ -49,14 +49,14 @@ output "subnet_id" {
 }
 
 output "db_endpoint" {
-  value = aws_db_instance.main.endpoint
+  value       = aws_db_instance.main.endpoint
   description = "RDS instance endpoint"
 }
 
 output "db_secret_arn" {
-  value = length(aws_db_instance.main.master_user_secret) > 0 ? aws_db_instance.main.master_user_secret[0].secret_arn : null
+  value       = length(aws_db_instance.main.master_user_secret) > 0 ? aws_db_instance.main.master_user_secret[0].secret_arn : null
   description = "ARN du secret contenant les credentials de la base de données"
-  sensitive = true
+  sensitive   = true
 }
 
 resource "aws_db_subnet_group" "main" {
@@ -67,9 +67,9 @@ resource "aws_db_subnet_group" "main" {
 resource "aws_db_instance" "main" {
   identifier = "${var.project_id}-database"
 
-  engine         = var.db_engine
-  engine_version = var.db_engine_version
-  instance_class = var.db_instance_class
+  engine            = var.db_engine
+  engine_version    = var.db_engine_version
+  instance_class    = var.db_instance_class
   allocated_storage = var.db_allocated_storage
 
   db_name  = var.db_name
