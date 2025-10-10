@@ -35,6 +35,16 @@ resource "aws_subnet" "main" {
   }
 }
 
+resource "aws_subnet" "db" {
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = var.db_subnet_cidr
+  availability_zone = var.subnet_az
+
+  tags = {
+    Name = "${var.vpc_name}-db-subnet"
+  }
+}
+
 # --- Outputs ---
 output "vpc_id" {
   value = aws_vpc.main.id
@@ -42,4 +52,26 @@ output "vpc_id" {
 
 output "subnet_id" {
   value = aws_subnet.main.id
+}
+
+resource "aws_db_subnet_group" "main" {
+  name       = "${var.project_id}-db-subnet-group"
+  subnet_ids = [aws_subnet.main.id, aws_subnet.db.id]
+}
+
+resource "aws_db_instance" "main" {
+  identifier = "${var.project_id}-database"
+
+  engine         = var.db_engine
+  engine_version = var.db_engine_version
+  instance_class = var.db_instance_class
+  allocated_storage = var.db_allocated_storage
+
+  db_name  = var.db_name
+  username = var.db_username
+  password = var.db_password
+
+  db_subnet_group_name = aws_db_subnet_group.main.name
+  publicly_accessible  = false
+  skip_final_snapshot  = true
 }
