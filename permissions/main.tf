@@ -138,7 +138,10 @@ resource "aws_iam_role_policy" "terraform_policy" {
           "iam:GetLoginProfile",
           "iam:ListAttachedUserPolicies",
           "eks:DescribeCluster",
-          "eks:ListClusters"
+          "eks:ListClusters",
+          "rds:DescribeDBSubnetGroups",
+          "rds:ListTagsForResource",
+          "rds:DescribeDBInstances"
         ]
         Resource = "*"
       }
