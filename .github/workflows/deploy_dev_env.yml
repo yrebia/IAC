@@ -43,11 +43,18 @@ jobs:
         run: terraform validate -no-color
 
       - name: Terraform Auto-Import Namespace (idempotent)
+        env:
+          TF_IN_AUTOMATION: "1"
         run: |
           set -euo pipefail
           if ! terraform state list | grep -q '^kubernetes_namespace\.app$'; then
             echo "Namespace 'app' pas encore dans le state: tentative d'import…"
-            terraform import -lock-timeout=5m kubernetes_namespace.app app || echo "Import non effectué (namespace absent) : il sera créé par terraform apply."
+            terraform import \
+              -var-file=dev.tfvars \
+              -input=false \
+              -lock-timeout=5m \
+              kubernetes_namespace.app app \
+              || echo "Import non effectué (namespace absent) : il sera créé par terraform apply."
           else
             echo "Namespace 'app' déjà suivi par Terraform: rien à faire."
           fi
