@@ -1,0 +1,28 @@
+name: Open/Update PR: dev → main (after successful dev deploy)
+
+on:
+  workflow_run:
+    workflows: ["Deploy Dev Environment"]
+    types: [completed]
+  workflow_dispatch: {}
+
+jobs:
+  open-pr:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create or update PR dev → main
+        uses: repo-sync/pull-request@v2
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          destination_branch: main
+          pr_title: "Promote dev → main"
+          pr_body: |
+            PR ouverte/actualisée automatiquement après un **déploiement dev réussi**.
+            Vérifiez le `terraform plan` **prod** sur la PR.
+          pr_label: "promotion,prod"
