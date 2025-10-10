@@ -17,10 +17,19 @@ spec:
         app.kubernetes.io/name: {{ include "task-manager.name" . }}
         app.kubernetes.io/instance: {{ .Release.Name }}
     spec:
+      serviceAccountName: {{ include "task-manager.serviceAccountName" . }}
       nodeSelector: {{- toYaml .Values.nodeSelector | nindent 8 }}
+      {{- with .Values.tolerations }}
+      tolerations: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.topologySpreadConstraints }}
+      topologySpreadConstraints: {{- toYaml . | nindent 8 }}
+      {{- end }}
       securityContext:
-        runAsNonRoot: true
-        fsGroup: 2000
+        {{- toYaml .Values.securityContext | nindent 8 }}
       containers:
         - name: {{ .Chart.Name }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
@@ -28,23 +37,52 @@ spec:
           ports:
             - containerPort: {{ .Values.service.targetPort }}
           readinessProbe:
-            httpGet:
-              path: /
-              port: {{ .Values.service.targetPort }}
+            httpGet: { path: "/", port: {{ .Values.service.targetPort }} }
             initialDelaySeconds: 5
           livenessProbe:
-            httpGet:
-              path: /
-              port: {{ .Values.service.targetPort }}
+            httpGet: { path: "/", port: {{ .Values.service.targetPort }} }
             initialDelaySeconds: 10
             periodSeconds: 15
           securityContext:
-            allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: true
-            capabilities:
-              drop: ["ALL"]
+            {{- toYaml .Values.containerSecurityContext | nindent 12 }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
+
+          # ---- C6 : injection des variables DB depuis le Secret K8s ----
+          {{- if .Values.db.enabled }}
+          envFrom:
+            - secretRef:
+                name: {{ .Values.db.secretName }}
+          {{- if not .Values.db.useDatabaseUrl }}
+          env:
+            - name: DB_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.db.secretName }}
+                  key: DB_HOST
+            - name: DB_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.db.secretName }}
+                  key: DB_PORT
+            - name: DB_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.db.secretName }}
+                  key: DB_NAME
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.db.secretName }}
+                  key: DB_USER
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.db.secretName }}
+                  key: DB_PASSWORD
+          {{- end }}
+          {{- end }}
+
           volumeMounts:
             - name: run
               mountPath: /var/run
