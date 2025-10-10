@@ -41,10 +41,18 @@ jobs:
       # S’assure que le namespace existe (tu ne le gères pas via TF)
       - name: Ensure namespace app exists
         run: |
-          curl -Lo kubectl https://storage.googleapis.com/kubernetes-release/release/v1.29.0/bin/linux/amd64/kubectl
-          chmod +x kubectl && sudo mv kubectl /usr/local/bin/kubectl
-          aws eks update-kubeconfig --region eu-west-3 --name tmgr-eks --role-arn arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/GitHubActionsRole
-          kubectl get ns app >/dev/null 2>&1 || kubectl create ns app
+        curl -Lo kubectl https://storage.googleapis.com/kubernetes-release/release/v1.29.0/bin/linux/amd64/kubectl
+        chmod +x kubectl && sudo mv kubectl /usr/local/bin/kubectl
+
+    # Pas de --role-arn !
+        aws eks update-kubeconfig --region eu-west-3 --name tmgr-eks
+
+    # (optionnel) diagnostic rapide
+        kubectl auth can-i get pods -A || true
+
+    # Crée le namespace s’il n’existe pas
+        kubectl get ns app >/dev/null 2>&1 || kubectl create ns app
+
 
       - name: Terraform Plan
         run: terraform plan -var-file=dev.tfvars -no-color
