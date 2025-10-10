@@ -22,6 +22,12 @@ resource "aws_iam_user_policy_attachment" "students_power" {
   policy_arn = "arn:aws:iam::aws:policy/PowerUserAccess"
 }
 
+resource "aws_iam_user_policy_attachment" "students_change_password" {
+  for_each   = aws_iam_user.students
+  user       = each.value.name
+  policy_arn = "arn:aws:iam::aws:policy/IAMUserChangePassword"
+}
+
 resource "aws_iam_user" "jeremie" {
   name = "jeremie"
   tags = {
@@ -33,6 +39,11 @@ resource "aws_iam_user" "jeremie" {
 resource "aws_iam_user_policy_attachment" "jeremie_readonly" {
   user       = aws_iam_user.jeremie.name
   policy_arn = "arn:aws:iam::aws:policy/ReadOnlyAccess"
+}
+
+resource "aws_iam_user_policy_attachment" "jeremie_change_password" {
+  user       = aws_iam_user.jeremie.name
+  policy_arn = "arn:aws:iam::aws:policy/IAMUserChangePassword"
 }
 
 resource "aws_iam_access_key" "jeremie" {
@@ -108,10 +119,33 @@ resource "aws_iam_role_policy" "terraform_policy" {
           "iam:GetUser",
           "iam:ListAccessKeys",
           "iam:GetLoginProfile",
-          "iam:ListAttachedUserPolicies"
+          "iam:ListAttachedUserPolicies",
+          "eks:DescribeCluster",
+          "eks:ListClusters"
         ]
         Resource = "*"
       }
     ]
   })
+}
+
+resource "aws_eks_access_entry" "github_actions" {
+  cluster_name  = "tmgr-eks"
+  principal_arn = aws_iam_role.github_actions_role.arn
+  type          = "STANDARD"
+
+  tags = {
+    Project = var.project_id
+    Env     = var.env
+  }
+}
+
+resource "aws_eks_access_policy_association" "github_actions_admin" {
+  cluster_name  = "tmgr-eks"
+  principal_arn = aws_iam_role.github_actions_role.arn
+  policy_arn    = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
+
+  access_scope {
+    type = "cluster"
+  }
 }
