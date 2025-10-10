@@ -1,4 +1,4 @@
-name: Open/Update PR: dev → main (after successful dev deploy)
+name: Open/Update PR dev → main (after successful dev deploy)
 
 on:
   workflow_run:
