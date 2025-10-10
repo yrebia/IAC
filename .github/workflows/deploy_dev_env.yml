@@ -7,9 +7,14 @@ on:
   pull_request:
     branches: [dev]
 
+concurrency:
+  group: terraform-dev
+  cancel-in-progress: false
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    environment: dev
     permissions:
       id-token: write
       contents: read
@@ -38,21 +43,9 @@ jobs:
       - name: Terraform Validate
         run: terraform validate -no-color
 
-      - name: Ensure namespace "app" exists
-        shell: bash
-        run: |
-          set -euo pipefail
-          curl -Lo kubectl https://storage.googleapis.com/kubernetes-release/release/v1.29.0/bin/linux/amd64/kubectl
-          chmod +x kubectl && sudo mv kubectl /usr/local/bin/kubectl
-
-          aws eks update-kubeconfig --region eu-west-3 --name tmgr-eks
-
-          kubectl auth can-i get pods -A || true
-
-          kubectl get ns app >/dev/null 2>&1 || kubectl create ns app
-
       - name: Terraform Plan
-        run: terraform plan -var-file=dev.tfvars -no-color
+        run: terraform plan -var-file=dev.tfvars -lock-timeout=5m -no-color
 
       - name: Terraform Apply
-        run: terraform apply -var-file=dev.tfvars -auto-approve -no-color
+        if: github.event_name != 'pull_request'
+        run: terraform apply -var-file=dev.tfvars -auto-approve -lock-timeout=5m -no-color
