@@ -109,43 +109,43 @@ resource "aws_iam_role_policy" "terraform_policy" {
   role = aws_iam_role.github_actions_role.id
 
   policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Action = [
-          "s3:*",
-          "dynamodb:*",
-          "ec2:CreateVpc",
-          "ec2:DeleteVpc",
-          "ec2:DescribeVpcs",
-          "ec2:DescribeVpcAttribute",
-          "ec2:ModifyVpcAttribute",
-          "ec2:DescribeSubnets",
-          "ec2:CreateSubnet",
-          "ec2:DeleteSubnet",
-          "ec2:DescribeRouteTables",
-          "ec2:CreateRouteTable",
-          "ec2:DeleteRouteTable",
-          "ec2:AssociateRouteTable",
-          "ec2:DisassociateRouteTable",
-          "ec2:CreateInternetGateway",
-          "ec2:AttachInternetGateway",
-          "ec2:DetachInternetGateway",
-          "ec2:DeleteInternetGateway",
-          "iam:GetUser",
-          "iam:ListAccessKeys",
-          "iam:GetLoginProfile",
-          "iam:ListAttachedUserPolicies",
-          "eks:DescribeCluster",
-          "eks:ListClusters",
-          "rds:DescribeDBSubnetGroups",
-          "rds:ListTagsForResource",
-          "rds:DescribeDBInstances"
-        ]
-        Resource = "*"
-      }
-    ]
+    Version = "2012-10-17",
+    Statement = [{
+      Effect = "Allow",
+      Action = [
+        # Backend TF
+        "s3:*",
+        "dynamodb:*",
+
+        # Réseau VPC de base
+        "ec2:CreateVpc", "ec2:DeleteVpc", "ec2:DescribeVpcs", "ec2:DescribeVpcAttribute", "ec2:ModifyVpcAttribute",
+        "ec2:DescribeSubnets", "ec2:CreateSubnet", "ec2:DeleteSubnet",
+        "ec2:DescribeRouteTables", "ec2:CreateRouteTable", "ec2:DeleteRouteTable", "ec2:AssociateRouteTable", "ec2:DisassociateRouteTable",
+        "ec2:CreateInternetGateway", "ec2:AttachInternetGateway", "ec2:DetachInternetGateway", "ec2:DeleteInternetGateway",
+
+        # ➕ Security Groups (RDS)
+        "ec2:CreateSecurityGroup", "ec2:DeleteSecurityGroup", "ec2:DescribeSecurityGroups",
+        "ec2:AuthorizeSecurityGroupIngress", "ec2:AuthorizeSecurityGroupEgress",
+        "ec2:RevokeSecurityGroupIngress", "ec2:RevokeSecurityGroupEgress",
+
+        # IAM (lecture basique)
+        "iam:GetUser", "iam:ListAccessKeys", "iam:GetLoginProfile", "iam:ListAttachedUserPolicies",
+
+        # EKS (lecture pour provider kubernetes/helm)
+        "eks:DescribeCluster", "eks:ListClusters",
+
+        # ➕ RDS (subnet group + instance)
+        "rds:CreateDBSubnetGroup", "rds:ModifyDBSubnetGroup", "rds:DeleteDBSubnetGroup", "rds:DescribeDBSubnetGroups",
+        "rds:CreateDBInstance", "rds:ModifyDBInstance", "rds:DeleteDBInstance", "rds:DescribeDBInstances",
+        "rds:AddTagsToResource", "rds:ListTagsForResource",
+
+        # ➕ Secrets Manager (lecture du mot de passe RDS)
+        "secretsmanager:GetSecretValue", "secretsmanager:DescribeSecret"
+
+        # Si secret chiffré par KMS CMK custom, ajouter : "kms:Decrypt"
+      ],
+      Resource = "*"
+    }]
   })
 }
 
@@ -168,9 +168,7 @@ resource "aws_eks_access_policy_association" "github_actions_admin" {
   principal_arn = aws_iam_role.github_actions_role.arn
   policy_arn    = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
 
-  access_scope {
-    type = "cluster"
-  }
+  access_scope { type = "cluster" }
 }
 
 ##########################################
@@ -194,7 +192,5 @@ resource "aws_eks_access_policy_association" "students_cluster_admin" {
   principal_arn = each.value.arn
   policy_arn    = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
 
-  access_scope {
-    type = "cluster"
-  }
+  access_scope { type = "cluster" }
 }
