@@ -2,13 +2,10 @@ name: Deploy Dev Environment
 
 on:
   push:
-    branches:
-      - dev
-    tags:
-      - 'v*.*.*'
+    branches: [dev]
+    tags: ['v*.*.*']
   pull_request:
-    branches:
-      - dev
+    branches: [dev]
 
 jobs:
   deploy:
@@ -36,15 +33,26 @@ jobs:
         run: terraform fmt -check -recursive
 
       - name: Terraform Init
-        run: terraform init -backend-config=backends/dev.config
+        run: terraform init -backend-config=backends/dev.config -no-color
 
       - name: Terraform Validate
-        run: terraform validate
+        run: terraform validate -no-color
+
+      - name: Ensure namespace "app" exists
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -Lo kubectl https://storage.googleapis.com/kubernetes-release/release/v1.29.0/bin/linux/amd64/kubectl
+          chmod +x kubectl && sudo mv kubectl /usr/local/bin/kubectl
+
+          aws eks update-kubeconfig --region eu-west-3 --name tmgr-eks
+
+          kubectl auth can-i get pods -A || true
+
+          kubectl get ns app >/dev/null 2>&1 || kubectl create ns app
 
       - name: Terraform Plan
-        run: terraform plan -var-file=dev.tfvars
+        run: terraform plan -var-file=dev.tfvars -no-color
 
       - name: Terraform Apply
-        run: terraform apply -var-file=dev.tfvars -auto-approve
-
-
+        run: terraform apply -var-file=dev.tfvars -auto-approve -no-color
