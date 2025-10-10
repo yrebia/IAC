@@ -40,6 +40,12 @@ variable "db_subnet_cidr" {
   description = "CIDR block for the DB subnet (ex: 10.0.2.0/24)"
 }
 
+variable "db_subnet_az" {
+  type        = string
+  description = "Availability Zone de la subnet (ex: eu-west-3c)"
+  default     = "eu-west-3c"
+}
+
 # Database variables
 variable "db_engine" {
   type        = string

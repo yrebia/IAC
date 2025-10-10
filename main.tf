@@ -32,7 +32,7 @@ resource "aws_subnet" "main" {
 resource "aws_subnet" "db" {
   vpc_id            = aws_vpc.main.id
   cidr_block        = var.db_subnet_cidr
-  availability_zone = var.subnet_az
+  availability_zone = var.db_subnet_az
 
   tags = {
     Name = "${var.vpc_name}-db-subnet"
@@ -46,6 +46,17 @@ output "vpc_id" {
 
 output "subnet_id" {
   value = aws_subnet.main.id
+}
+
+output "db_endpoint" {
+  value = aws_db_instance.main.endpoint
+  description = "RDS instance endpoint"
+}
+
+output "db_secret_arn" {
+  value = length(aws_db_instance.main.master_user_secret) > 0 ? aws_db_instance.main.master_user_secret[0].secret_arn : null
+  description = "ARN du secret contenant les credentials de la base de données"
+  sensitive = true
 }
 
 resource "aws_db_subnet_group" "main" {
@@ -63,7 +74,8 @@ resource "aws_db_instance" "main" {
 
   db_name  = var.db_name
   username = var.db_username
-  password = var.db_password
+
+  manage_master_user_password = true
 
   db_subnet_group_name = aws_db_subnet_group.main.name
   publicly_accessible  = false
