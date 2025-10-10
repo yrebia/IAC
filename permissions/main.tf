@@ -139,7 +139,8 @@ resource "aws_iam_role_policy" "terraform_policy" {
           "iam:ListAttachedUserPolicies",
           "eks:DescribeCluster",
           "eks:ListClusters",
-          "rds:DescribeDBSubnetGroups"
+          "rds:DescribeDBSubnetGroups",
+          "rds:ListTagsForResource"
         ]
         Resource = "*"
       }
