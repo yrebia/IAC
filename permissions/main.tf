@@ -103,54 +103,50 @@ resource "aws_iam_role" "github_actions_role" {
   }
 }
 
-# Policy attachée au rôle GitHub Actions (Terraform)
 resource "aws_iam_role_policy" "terraform_policy" {
   name = "TerraformPolicy"
   role = aws_iam_role.github_actions_role.id
 
   policy = jsonencode({
     Version = "2012-10-17",
-    Statement = [{
-      Effect = "Allow",
-      Action = [
-        // Backend TF
-        "s3:*",
-        "dynamodb:*",
+    Statement = [
+      {
+        Effect = "Allow",
+        Action = [
+          # Backend TF
+          "s3:*",
+          "dynamodb:*",
 
-        // Réseau VPC
-        "ec2:CreateVpc", "ec2:DeleteVpc", "ec2:DescribeVpcs", "ec2:DescribeVpcAttribute", "ec2:ModifyVpcAttribute",
-        "ec2:DescribeSubnets", "ec2:CreateSubnet", "ec2:DeleteSubnet",
-        "ec2:DescribeRouteTables", "ec2:CreateRouteTable", "ec2:DeleteRouteTable", "ec2:AssociateRouteTable", "ec2:DisassociateRouteTable",
-        "ec2:CreateInternetGateway", "ec2:AttachInternetGateway", "ec2:DetachInternetGateway", "ec2:DeleteInternetGateway",
+          # Réseau VPC de base
+          "ec2:CreateVpc", "ec2:DeleteVpc", "ec2:DescribeVpcs", "ec2:DescribeVpcAttribute", "ec2:ModifyVpcAttribute",
+          "ec2:DescribeSubnets", "ec2:CreateSubnet", "ec2:DeleteSubnet",
+          "ec2:DescribeRouteTables", "ec2:CreateRouteTable", "ec2:DeleteRouteTable", "ec2:AssociateRouteTable", "ec2:DisassociateRouteTable",
+          "ec2:CreateInternetGateway", "ec2:AttachInternetGateway", "ec2:DetachInternetGateway", "ec2:DeleteInternetGateway",
 
-        // Security Groups
-        "ec2:CreateSecurityGroup", "ec2:DeleteSecurityGroup", "ec2:DescribeSecurityGroups",
-        "ec2:AuthorizeSecurityGroupIngress", "ec2:AuthorizeSecurityGroupEgress",
-        "ec2:RevokeSecurityGroupIngress", "ec2:RevokeSecurityGroupEgress",
-        "ec2:DescribeSecurityGroupRules",
+          # Security Groups (RDS)
+          "ec2:CreateSecurityGroup", "ec2:DeleteSecurityGroup", "ec2:DescribeSecurityGroups",
+          "ec2:AuthorizeSecurityGroupIngress", "ec2:AuthorizeSecurityGroupEgress",
+          "ec2:RevokeSecurityGroupIngress", "ec2:RevokeSecurityGroupEgress",
+          "ec2:DescribeSecurityGroupRules",
 
-        // IAM (lecture)
-        "iam:GetUser", "iam:ListAccessKeys", "iam:GetLoginProfile", "iam:ListAttachedUserPolicies",
+          # IAM (lecture basique)
+          "iam:GetUser", "iam:ListAccessKeys", "iam:GetLoginProfile", "iam:ListAttachedUserPolicies",
 
-        // EKS (lecture providers)
-        "eks:DescribeCluster", "eks:ListClusters",
+          # EKS (lecture pour provider kubernetes/helm)
+          "eks:DescribeCluster", "eks:ListClusters",
 
-        // RDS
-        "rds:CreateDBSubnetGroup", "rds:ModifyDBSubnetGroup", "rds:DeleteDBSubnetGroup", "rds:DescribeDBSubnetGroups",
-        "rds:CreateDBInstance", "rds:ModifyDBInstance", "rds:DeleteDBInstance", "rds:DescribeDBInstances",
-        "rds:AddTagsToResource", "rds:ListTagsForResource",
+          # RDS (subnet group + instance)
+          "rds:CreateDBSubnetGroup", "rds:ModifyDBSubnetGroup", "rds:DeleteDBSubnetGroup", "rds:DescribeDBSubnetGroups",
+          "rds:CreateDBInstance", "rds:ModifyDBInstance", "rds:DeleteDBInstance", "rds:DescribeDBInstances",
+          "rds:AddTagsToResource", "rds:ListTagsForResource",
 
-        // Secrets Manager (lecture secret RDS)
-        "secretsmanager:GetSecretValue",
-        "secretsmanager:DescribeSecret",
-        "secretsmanager:ListSecrets",
-        "secretsmanager:ListSecretVersionIds",
-
-        // (si secret chiffré par CMK custom)
-        "kms:Decrypt"
-      ],
-      Resource = "*"
-    }]
+          # Secrets Manager (lecture du mdp RDS)
+          "secretsmanager:GetSecretValue", "secretsmanager:DescribeSecret"
+          # Optionnel si CMK custom : "kms:Decrypt"
+        ],
+        Resource = "*"
+      }
+    ]
   })
 }
 
