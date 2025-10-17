@@ -1,0 +1,10 @@
+fastapi
+sqlmodel
+uvicorn
+psycopg2-binary
+cryptography
+python-dotenv
+pydantic-settings
+boto3
+prometheus-client
+prometheus-fastapi-instrumentator
