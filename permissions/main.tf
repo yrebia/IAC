@@ -153,7 +153,7 @@ resource "aws_iam_role_policy" "terraform_policy" {
 # Accès EKS - GitHub Actions
 ##########################################
 resource "aws_eks_access_entry" "github_actions" {
-  cluster_name  = "tmgr-eks"
+  cluster_name  = "tmgr-eks3"
   principal_arn = aws_iam_role.github_actions_role.arn
   type          = "STANDARD"
 
@@ -164,7 +164,7 @@ resource "aws_eks_access_entry" "github_actions" {
 }
 
 resource "aws_eks_access_policy_association" "github_actions_admin" {
-  cluster_name  = "tmgr-eks"
+  cluster_name  = "tmgr-eks3"
   principal_arn = aws_iam_role.github_actions_role.arn
   policy_arn    = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
 
@@ -176,7 +176,7 @@ resource "aws_eks_access_policy_association" "github_actions_admin" {
 ##########################################
 resource "aws_eks_access_entry" "students" {
   for_each      = aws_iam_user.students
-  cluster_name  = "tmgr-eks"
+  cluster_name  = "tmgr-eks3"
   principal_arn = each.value.arn
   type          = "STANDARD"
 
@@ -188,7 +188,7 @@ resource "aws_eks_access_entry" "students" {
 
 resource "aws_eks_access_policy_association" "students_cluster_admin" {
   for_each      = aws_iam_user.students
-  cluster_name  = "tmgr-eks"
+  cluster_name  = "tmgr-eks3"
   principal_arn = each.value.arn
   policy_arn    = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
 
