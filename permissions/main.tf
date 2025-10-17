@@ -127,7 +127,7 @@ resource "aws_iam_role_policy" "terraform_policy" {
         "ec2:CreateSecurityGroup", "ec2:DeleteSecurityGroup", "ec2:DescribeSecurityGroups",
         "ec2:AuthorizeSecurityGroupIngress", "ec2:AuthorizeSecurityGroupEgress",
         "ec2:RevokeSecurityGroupIngress", "ec2:RevokeSecurityGroupEgress",
-        "ec2:DescribeSecurityGroupRules",         // 👈 MANQUANTE
+        "ec2:DescribeSecurityGroupRules",
 
         // IAM (lecture)
         "iam:GetUser", "iam:ListAccessKeys", "iam:GetLoginProfile", "iam:ListAttachedUserPolicies",
@@ -143,8 +143,8 @@ resource "aws_iam_role_policy" "terraform_policy" {
         // Secrets Manager (lecture secret RDS)
         "secretsmanager:GetSecretValue",
         "secretsmanager:DescribeSecret",
-        "secretsmanager:ListSecrets",             // 👍 recommandé
-        "secretsmanager:ListSecretVersionIds",    // 👍 recommandé
+        "secretsmanager:ListSecrets",
+        "secretsmanager:ListSecretVersionIds",
 
         // (si secret chiffré par CMK custom)
         "kms:Decrypt"
