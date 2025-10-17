@@ -112,38 +112,25 @@ resource "aws_iam_role_policy" "terraform_policy" {
     Statement = [{
       Effect = "Allow",
       Action = [
-        # Backend TF
-        "s3:*",
-        "dynamodb:*",
+        "s3:*","dynamodb:*",
 
-        # Réseau VPC
-        "ec2:CreateVpc", "ec2:DeleteVpc", "ec2:DescribeVpcs", "ec2:DescribeVpcAttribute", "ec2:ModifyVpcAttribute",
-        "ec2:DescribeSubnets", "ec2:CreateSubnet", "ec2:DeleteSubnet",
-        "ec2:DescribeRouteTables", "ec2:CreateRouteTable", "ec2:DeleteRouteTable",
-        "ec2:AssociateRouteTable", "ec2:DisassociateRouteTable",
-        "ec2:CreateInternetGateway", "ec2:AttachInternetGateway", "ec2:DetachInternetGateway", "ec2:DeleteInternetGateway",
+        "ec2:DescribeVpcs","ec2:DescribeVpcAttribute","ec2:ModifyVpcAttribute",
+        "ec2:DescribeSubnets","ec2:CreateSubnet","ec2:DeleteSubnet",
+        "ec2:DescribeRouteTables","ec2:CreateRouteTable","ec2:DeleteRouteTable",
+        "ec2:AssociateRouteTable","ec2:DisassociateRouteTable",
+        "ec2:CreateInternetGateway","ec2:AttachInternetGateway","ec2:DetachInternetGateway","ec2:DeleteInternetGateway",
 
-        # Security Groups (inclure les rules)
-        "ec2:CreateSecurityGroup", "ec2:DeleteSecurityGroup", "ec2:DescribeSecurityGroups",
-        "ec2:AuthorizeSecurityGroupIngress", "ec2:AuthorizeSecurityGroupEgress",
-        "ec2:RevokeSecurityGroupIngress", "ec2:RevokeSecurityGroupEgress",
-        "ec2:DescribeSecurityGroupRules",
+        "ec2:CreateSecurityGroup","ec2:DeleteSecurityGroup","ec2:DescribeSecurityGroups",
+        "ec2:AuthorizeSecurityGroupIngress","ec2:AuthorizeSecurityGroupEgress",
+        "ec2:RevokeSecurityGroupIngress","ec2:RevokeSecurityGroupEgress",
+        "ec2:DescribeSecurityGroupRules",   # <-- indispensable pour ton plan
 
-        # IAM lecture
-        "iam:GetUser", "iam:ListAccessKeys", "iam:GetLoginProfile", "iam:ListAttachedUserPolicies",
+        "eks:DescribeCluster","eks:ListClusters",
 
-        # EKS lecture (provider k8s/helm)
-        "eks:DescribeCluster", "eks:ListClusters",
+        "rds:DescribeDBSubnetGroups","rds:DescribeDBInstances","rds:ListTagsForResource",
 
-        # RDS
-        "rds:CreateDBSubnetGroup", "rds:ModifyDBSubnetGroup", "rds:DeleteDBSubnetGroup", "rds:DescribeDBSubnetGroups",
-        "rds:CreateDBInstance", "rds:ModifyDBInstance", "rds:DeleteDBInstance", "rds:DescribeDBInstances",
-        "rds:AddTagsToResource", "rds:ListTagsForResource",
-
-        # Secrets Manager (lecture du mdp RDS)
-        "secretsmanager:GetSecretValue", "secretsmanager:DescribeSecret"
-
-        # Si secret chiffré avec une CMK perso, ajoute aussi: "kms:Decrypt"
+        "secretsmanager:GetSecretValue","secretsmanager:DescribeSecret"  # <-- indispensable pour ton data source
+        # si secret chiffré KMS custom : "kms:Decrypt"
       ],
       Resource = "*"
     }]
