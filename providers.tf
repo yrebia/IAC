@@ -16,7 +16,6 @@ terraform {
     }
   }
 
-  # injecté en CI via -backend-config
   backend "s3" {}
 }
 
