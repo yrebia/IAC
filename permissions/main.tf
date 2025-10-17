@@ -113,36 +113,41 @@ resource "aws_iam_role_policy" "terraform_policy" {
     Statement = [{
       Effect = "Allow",
       Action = [
-        # Backend TF
+        // Backend TF
         "s3:*",
         "dynamodb:*",
 
-        # Réseau VPC de base
+        // Réseau VPC
         "ec2:CreateVpc", "ec2:DeleteVpc", "ec2:DescribeVpcs", "ec2:DescribeVpcAttribute", "ec2:ModifyVpcAttribute",
         "ec2:DescribeSubnets", "ec2:CreateSubnet", "ec2:DeleteSubnet",
         "ec2:DescribeRouteTables", "ec2:CreateRouteTable", "ec2:DeleteRouteTable", "ec2:AssociateRouteTable", "ec2:DisassociateRouteTable",
         "ec2:CreateInternetGateway", "ec2:AttachInternetGateway", "ec2:DetachInternetGateway", "ec2:DeleteInternetGateway",
 
-        # ➕ Security Groups (RDS)
+        // Security Groups
         "ec2:CreateSecurityGroup", "ec2:DeleteSecurityGroup", "ec2:DescribeSecurityGroups",
         "ec2:AuthorizeSecurityGroupIngress", "ec2:AuthorizeSecurityGroupEgress",
         "ec2:RevokeSecurityGroupIngress", "ec2:RevokeSecurityGroupEgress",
+        "ec2:DescribeSecurityGroupRules",         // 👈 MANQUANTE
 
-        # IAM (lecture basique)
+        // IAM (lecture)
         "iam:GetUser", "iam:ListAccessKeys", "iam:GetLoginProfile", "iam:ListAttachedUserPolicies",
 
-        # EKS (lecture pour provider kubernetes/helm)
+        // EKS (lecture providers)
         "eks:DescribeCluster", "eks:ListClusters",
 
-        # ➕ RDS (subnet group + instance)
+        // RDS
         "rds:CreateDBSubnetGroup", "rds:ModifyDBSubnetGroup", "rds:DeleteDBSubnetGroup", "rds:DescribeDBSubnetGroups",
         "rds:CreateDBInstance", "rds:ModifyDBInstance", "rds:DeleteDBInstance", "rds:DescribeDBInstances",
         "rds:AddTagsToResource", "rds:ListTagsForResource",
 
-        # ➕ Secrets Manager (lecture du mot de passe RDS)
-        "secretsmanager:GetSecretValue", "secretsmanager:DescribeSecret"
+        // Secrets Manager (lecture secret RDS)
+        "secretsmanager:GetSecretValue",
+        "secretsmanager:DescribeSecret",
+        "secretsmanager:ListSecrets",             // 👍 recommandé
+        "secretsmanager:ListSecretVersionIds",    // 👍 recommandé
 
-        # Si secret chiffré par KMS CMK custom, ajouter : "kms:Decrypt"
+        // (si secret chiffré par CMK custom)
+        "kms:Decrypt"
       ],
       Resource = "*"
     }]
