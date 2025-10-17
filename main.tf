@@ -68,15 +68,6 @@ resource "aws_security_group_rule" "db_ingress_from_eks" {
   source_security_group_id = data.aws_eks_cluster.this.vpc_config[0].cluster_security_group_id
 }
 
-resource "aws_security_group_rule" "db_egress_all" {
-  type              = "egress"
-  security_group_id = aws_security_group.db.id
-  from_port         = 0
-  to_port           = 0
-  protocol          = "-1"
-  cidr_blocks       = ["0.0.0.0/0"]
-}
-
 resource "aws_db_instance" "main" {
   identifier = "${var.project_id}-database"
 
