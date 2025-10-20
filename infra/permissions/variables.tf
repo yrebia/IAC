@@ -12,3 +12,8 @@ variable "region" {
   type        = string
   description = "AWS region for IAM resources"
 }
+
+variable "cluster_name" {
+  description = "Nom du cluster EKS"
+  type        = string
+}

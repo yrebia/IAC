@@ -194,3 +194,66 @@ resource "aws_eks_access_policy_association" "students_cluster_admin" {
 
   access_scope { type = "cluster" }
 }
+
+##########################################
+# MODULE : Permissions EKS (aws-auth)
+##########################################
+
+data "aws_eks_cluster" "this" {
+  name = var.cluster_name
+}
+
+data "aws_eks_cluster_auth" "this" {
+  name = var.cluster_name
+}
+
+provider "kubernetes" {
+  host                   = data.aws_eks_cluster.this.endpoint
+  cluster_ca_certificate = base64decode(data.aws_eks_cluster.this.certificate_authority[0].data)
+  token                  = data.aws_eks_cluster_auth.this.token
+}
+
+resource "kubernetes_config_map" "aws_auth" {
+  metadata {
+    name      = "aws-auth"
+    namespace = "kube-system"
+  }
+
+  data = {
+    mapRoles = yamlencode([
+      {
+        rolearn  = "arn:aws:iam::289050431371:role/tmgr-eks-cluster-20251020162323087700000003"
+        username = "eks-cluster-role"
+        groups   = ["system:masters"]
+      },
+      {
+        rolearn  = "arn:aws:iam::289050431371:role/GitHubActionsRole"
+        username = "github-actions"
+        groups   = ["system:masters"]
+      }
+    ])
+
+    mapUsers = yamlencode([
+      {
+        userarn  = "arn:aws:iam::289050431371:user/pauline"
+        username = "pauline"
+        groups   = ["system:masters"]
+      },
+      {
+        userarn  = "arn:aws:iam::289050431371:user/valentin"
+        username = "valentin"
+        groups   = ["system:masters"]
+      },
+      {
+        userarn  = "arn:aws:iam::289050431371:user/younes"
+        username = "younes"
+        groups   = ["system:masters"]
+      },
+      {
+        userarn  = "arn:aws:iam::289050431371:user/sami"
+        username = "sami"
+        groups   = ["system:masters"]
+      }
+    ])
+  }
+}

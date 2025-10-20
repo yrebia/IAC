@@ -1,11 +1,15 @@
+##########################################
+# Variables globales
+##########################################
+
 variable "project_id" {
   type        = string
-  description = "ID du projet ou nom logique (ex: student-team1-dev)"
+  description = "ID projet logique (ex: team1-dev)"
 }
 
 variable "region" {
   type        = string
-  description = "AWS region"
+  description = "Région AWS (ex: eu-west-3)"
 }
 
 variable "cluster_name" {
@@ -14,78 +18,89 @@ variable "cluster_name" {
   default     = "tmgr-eks"
 }
 
+##########################################
+# Réseau
+##########################################
 variable "vpc_name" {
   type        = string
-  description = "Name of the VPC"
+  description = "Nom du VPC"
 }
 
 variable "cidr_block" {
   type        = string
-  description = "CIDR block for the VPC (ex: 10.0.0.0/16)"
+  description = "CIDR du VPC (mémo)"
 }
 
 variable "subnet_cidr" {
   type        = string
-  description = "CIDR block for the subnet (ex: 10.0.1.0/24)"
+  description = "CIDR subnet app"
 }
 
 variable "subnet_az" {
   type        = string
-  description = "Availability Zone de la subnet (ex: eu-west-3b)"
+  description = "AZ subnet app"
   default     = "eu-west-3b"
 }
 
 variable "db_subnet_cidr" {
   type        = string
-  description = "CIDR block for the DB subnet (ex: 10.0.2.0/24)"
+  description = "CIDR subnet DB"
 }
 
 variable "db_subnet_az" {
   type        = string
-  description = "Availability Zone de la subnet (ex: eu-west-3c)"
+  description = "AZ subnet DB"
   default     = "eu-west-3c"
 }
 
-# Database variables
+variable "vpc_id" {
+  type        = string
+  description = "VPC ID (optionnel, prioritaire sur le lookup)"
+  default     = ""
+}
+
+##########################################
+# Base de données (RDS)
+##########################################
 variable "db_engine" {
   type        = string
-  description = "Database engine"
+  description = "Type de moteur de base de données"
   default     = "postgres"
 }
 
 variable "db_engine_version" {
   type        = string
-  description = "Database engine version"
+  description = "Version du moteur de base de données"
   default     = "15.4"
 }
 
 variable "db_instance_class" {
   type        = string
-  description = "Database instance class"
+  description = "Classe d’instance RDS"
   default     = "db.t3.micro"
 }
 
 variable "db_allocated_storage" {
   type        = number
-  description = "Database allocated storage in GB"
+  description = "Taille du stockage RDS en Go"
   default     = 20
 }
 
 variable "db_name" {
   type        = string
-  description = "Database name"
+  description = "Nom de la base de données"
   default     = "appdb"
 }
 
 variable "db_username" {
   type        = string
-  description = "Database master username"
+  description = "Nom d’utilisateur principal de la base"
   default     = "admin"
 }
 
 variable "db_password" {
   type        = string
-  description = "Database master password"
+  description = "Mot de passe administrateur de la base"
   sensitive   = true
   default     = "ChangeMe123!"
 }
