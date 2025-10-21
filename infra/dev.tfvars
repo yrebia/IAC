@@ -18,3 +18,10 @@ db_allocated_storage = 20
 db_name              = "appdbdev"
 db_username          = "dev"
 vpc_id               = "vpc-021490dfd686bd62e"
+
+students = [
+  { username = "pauline" },
+  { username = "yanis" },
+  { username = "aldric" },
+  { username = "mathieu" }
+]

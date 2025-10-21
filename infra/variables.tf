@@ -1,112 +1,116 @@
-##########################################
-# Variables globales
-##########################################
-
 variable "project_id" {
   type        = string
-  description = "ID projet logique (ex: team1-dev)"
+  description = "Project identifier"
+}
+
+variable "env" {
+  type        = string
+  description = "Environment (e.g., dev, prod)"
 }
 
 variable "region" {
   type        = string
   description = "AWS region"
-  default     = "eu-west-3"
 }
 
 variable "cluster_name" {
   type        = string
-  description = "Nom du cluster EKS"
-  default     = "tmgr-eks3"
+  description = "EKS cluster name"
 }
 
-##########################################
-# Réseau
-##########################################
 variable "vpc_name" {
   type        = string
-  description = "Nom du VPC"
+  description = "VPC name tag"
 }
 
 variable "cidr_block" {
   type        = string
-  description = "CIDR du VPC (mémo)"
+  description = "VPC CIDR block"
 }
 
 variable "subnet_cidr" {
   type        = string
-  description = "CIDR subnet app"
-}
-
-variable "subnet_az" {
-  type        = string
-  description = "AZ subnet app"
-  default     = "eu-west-3b"
+  description = "Application subnet CIDR"
 }
 
 variable "db_subnet_cidr" {
   type        = string
-  description = "CIDR subnet DB"
+  description = "Database subnet CIDR"
+}
+
+variable "subnet_az" {
+  type        = string
+  description = "Availability zone for app subnet"
 }
 
 variable "db_subnet_az" {
   type        = string
-  description = "AZ subnet DB"
-  default     = "eu-west-3c"
+  description = "Availability zone for DB subnet"
 }
 
 variable "vpc_id" {
+  type    = string
+  default = ""
+}
+
+variable "subnet_id" {
+  type    = string
+  default = ""
+}
+
+variable "db_subnet_id" {
+  type    = string
+  default = ""
+}
+
+variable "students" {
+  description = "Liste des étudiants pour accès EKS"
+  type = list(object({
+    username = string
+  }))
+}
+
+variable "aws_account_id" {
+  description = "AWS Account ID pour les ARN IAM"
   type        = string
-  description = "VPC ID (optionnel, prioritaire sur le lookup)"
-  default     = ""
 }
 
 ##########################################
-# Base de données (RDS)
+# Variables pour le module Database (RDS)
 ##########################################
+
 variable "db_engine" {
   type        = string
-  description = "Type de moteur de base de données"
+  description = "Type du moteur de base de données (ex: postgres)"
   default     = "postgres"
 }
 
 variable "db_engine_version" {
   type        = string
   description = "Version du moteur de base de données"
-  default     = "15.4"
+  default     = "16.2"
 }
 
 variable "db_instance_class" {
   type        = string
-  description = "Classe d’instance RDS"
+  description = "Classe d'instance RDS"
   default     = "db.t3.micro"
 }
 
 variable "db_allocated_storage" {
   type        = number
-  description = "Taille du stockage RDS en Go"
+  description = "Taille allouée (Go)"
   default     = 20
 }
 
 variable "db_name" {
   type        = string
   description = "Nom de la base de données"
-  default     = "appdb"
+  default     = "task_manager"
 }
 
 variable "db_username" {
   type        = string
-  description = "Nom d’utilisateur principal de la base"
+  description = "Nom d’utilisateur maître de la base de données"
   default     = "admin"
-}
-
-variable "db_password" {
-  type        = string
-  description = "Mot de passe administrateur de la base"
-  sensitive   = true
-  default     = "ChangeMe123!"
-}
-
-variable "env" {
-  description = "Environment (dev, prod, etc.)"
-  type        = string
 }

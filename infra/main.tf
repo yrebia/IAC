@@ -69,23 +69,14 @@ module "eks" {
   env          = var.env
 
   # Permissions IAM
-  github_actions_role_arn     = module.permissions.github_actions_role_arn
-  students_access_key_ids     = module.permissions.students_access_key_ids
-  students_secret_access_keys = module.permissions.students_secret_access_keys
+  github_actions_role_arn = module.permissions.github_actions_role_arn
+  students                = var.students
+  aws_account_id          = var.aws_account_id
 
   # Réseau
-  vpc_name       = var.vpc_name
-  cidr_block     = var.cidr_block
-  subnet_cidr    = var.subnet_cidr
-  subnet_az      = var.subnet_az
-  db_subnet_cidr = var.db_subnet_cidr
-  db_subnet_az   = var.db_subnet_az
-
-  # Passage explicite des IDs réseau du module network
-  vpc_id             = module.network.vpc_id
-  subnet_id          = module.network.app_subnet_id
-  db_subnet_id       = module.network.db_subnet_id
-  students_usernames = module.permissions.students_usernames
+  vpc_id       = module.network.vpc_id
+  subnet_id    = module.network.app_subnet_id
+  db_subnet_id = module.network.db_subnet_id
 }
 
 ##########################################

@@ -1,5 +1,5 @@
 ##########################################
-# Terraform Providers & Backend
+# Terraform & Provider AWS
 ##########################################
 terraform {
   required_version = ">= 1.6.0"
@@ -9,149 +9,128 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 5.0"
     }
-    kubernetes = {
-      source  = "hashicorp/kubernetes"
-      version = "~> 2.29"
-    }
-    helm = {
-      source  = "hashicorp/helm"
-      version = "~> 2.13"
-    }
   }
 }
 
 provider "aws" {
   region = var.region
+
+  skip_metadata_api_check     = true
+  skip_requesting_account_id  = true
+  skip_credentials_validation = true
+
+  default_tags {
+    tags = {
+      ManagedBy = "Terraform"
+      Project   = var.project_id
+      Env       = var.env
+    }
+  }
 }
 
 ##########################################
-# Network Lookups (VPC + Subnets)
-##########################################
-data "aws_vpcs" "by_name_cidr" {
-  filter {
-    name   = "tag:Name"
-    values = [var.vpc_name]
-  }
-
-  filter {
-    name   = "cidr-block"
-    values = [var.cidr_block]
-  }
-}
-
-locals {
-  resolved_vpc_ids = var.vpc_id != "" ? [var.vpc_id] : data.aws_vpcs.by_name_cidr.ids
-  existing_vpc_id  = element(local.resolved_vpc_ids, 0)
-}
-
-data "aws_subnets" "app" {
-  filter {
-    name   = "vpc-id"
-    values = [local.existing_vpc_id]
-  }
-  filter {
-    name   = "cidr-block"
-    values = [var.subnet_cidr]
-  }
-}
-
-data "aws_subnets" "db" {
-  filter {
-    name   = "vpc-id"
-    values = [local.existing_vpc_id]
-  }
-  filter {
-    name   = "cidr-block"
-    values = [var.db_subnet_cidr]
-  }
-}
-
-locals {
-  private_subnet_ids = [
-    element(data.aws_subnets.app.ids, 0),
-    element(data.aws_subnets.db.ids, 0)
-  ]
-
-  tags = merge(
-    {
-      Project     = var.project_id
-      Environment = var.env
-      ManagedBy   = "Terraform"
-    },
-    var.tags
-  )
-}
-
-##########################################
-# EKS Cluster Module
+# EKS Cluster
 ##########################################
 module "eks" {
   source  = "terraform-aws-modules/eks/aws"
-  version = "~> 20.8"
+  version = "20.24.1"
 
   cluster_name    = var.cluster_name
-  cluster_version = var.cluster_version
+  cluster_version = "1.31"
+  vpc_id          = var.vpc_id
+  subnet_ids      = [var.subnet_id]
 
-  vpc_id     = local.existing_vpc_id
-  subnet_ids = local.private_subnet_ids
+  cluster_endpoint_public_access = true
+  enable_irsa                    = false
+  create_kms_key                 = false
+  cluster_encryption_config      = {}
 
-  cluster_endpoint_private_access = true
-  cluster_endpoint_public_access  = var.cluster_endpoint_public
-
-  enable_irsa = true
-
-  cluster_addons = {
-    coredns    = { most_recent = true }
-    kube-proxy = { most_recent = true }
-    vpc-cni    = { most_recent = true }
+  tags = {
+    Project     = var.project_id
+    Environment = "dev"
+    ManagedBy   = "Terraform"
   }
 
   eks_managed_node_groups = {
     apps = {
-      instance_types = [var.apps_instance_type]
-      min_size       = var.apps_min
-      desired_size   = var.apps_desired
-      max_size       = var.apps_max
-      capacity_type  = var.apps_capacity_type
+      desired_size   = 2
+      max_size       = 3
+      min_size       = 1
+      instance_types = ["t3.medium"]
     }
   }
-
-  tags = local.tags
 }
 
 ##########################################
-# EKS Access Configuration (IAM Integration)
+# EKS Access Entries
 ##########################################
-data "aws_caller_identity" "current" {}
-
 # GitHub Actions
 resource "aws_eks_access_entry" "github_actions" {
   cluster_name  = module.eks.cluster_name
   principal_arn = var.github_actions_role_arn
   type          = "STANDARD"
-  tags          = local.tags
 }
 
 resource "aws_eks_access_policy_association" "github_actions_admin" {
   cluster_name  = module.eks.cluster_name
-  principal_arn = var.github_actions_role_arn
+  principal_arn = aws_eks_access_entry.github_actions.principal_arn
   policy_arn    = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
-  access_scope { type = "cluster" }
+
+  access_scope {
+    type = "cluster"
+  }
+}
+
+data "aws_caller_identity" "current" {}
+
+locals {
+  aws_account_id = data.aws_caller_identity.current.account_id
 }
 
 # Étudiants
 resource "aws_eks_access_entry" "students" {
-  for_each      = { for u in var.students_usernames : u => u }
+  for_each      = { for s in var.students : s.username => s }
   cluster_name  = module.eks.cluster_name
-  principal_arn = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:user/${each.key}"
+  principal_arn = "arn:aws:iam::${local.aws_account_id}:user/${each.value.username}"
   type          = "STANDARD"
-  tags          = local.tags
 }
 
-resource "aws_eks_access_policy_association" "students_admin" {
-  for_each      = aws_eks_access_entry.students
+resource "aws_eks_access_policy_association" "students_view" {
+  for_each = aws_eks_access_entry.students
+
   cluster_name  = module.eks.cluster_name
   principal_arn = each.value.principal_arn
-  policy_arn    = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
-  access_scope { type = "cluster" }
+  policy_arn    = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSViewPolicy"
+
+  access_scope {
+    type = "cluster"
+  }
+}
+
+##########################################
+# Outputs
+##########################################
+output "eks_cluster_name" {
+  value = module.eks.cluster_name
+}
+
+output "eks_cluster_endpoint" {
+  value = module.eks.cluster_endpoint
+}
+
+output "app_subnet_id" {
+  value = var.subnet_id
+}
+
+output "db_subnet_id" {
+  value = var.db_subnet_id
+}
+
+output "github_actions_role_arn" {
+  value = var.github_actions_role_arn
+}
+
+output "students_access_keys" {
+  value     = null
+  sensitive = true
 }
