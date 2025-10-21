@@ -114,3 +114,9 @@ variable "db_username" {
   description = "Nom d’utilisateur maître de la base de données"
   default     = "admin"
 }
+
+variable "enable_permissions" {
+  type        = bool
+  description = "Activer le module permissions"
+  default     = true
+}

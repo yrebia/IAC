@@ -33,14 +33,3 @@ output "eks_cluster_endpoint" {
   value       = module.eks.cluster_endpoint
   description = "Endpoint API du cluster EKS"
 }
-
-# Facultatif
-output "github_actions_role_arn" {
-  value       = module.permissions.github_actions_role_arn
-  description = "GitHub Actions IAM Role ARN"
-}
-
-output "students_access_keys" {
-  value     = module.permissions.students_access_key_ids
-  sensitive = true
-}

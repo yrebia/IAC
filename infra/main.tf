@@ -42,6 +42,10 @@ module "network" {
 ##########################################
 # Module Permissions (IAM & OIDC)
 ##########################################
+locals {
+  enable_permissions = var.enable_permissions
+}
+
 module "permissions" {
   source = "./permissions"
 
@@ -56,6 +60,16 @@ module "permissions" {
     { username = "student3" },
     { username = "student4" }
   ]
+}
+
+# Si on désactive, on "neutralise" les outputs pour éviter les erreurs
+output "github_actions_role_arn" {
+  value = local.enable_permissions ? module.permissions.github_actions_role_arn : null
+}
+
+output "students_access_keys" {
+  value     = local.enable_permissions ? module.permissions.students_access_key_ids : {}
+  sensitive = true
 }
 
 ##########################################
