@@ -17,22 +17,6 @@ terraform {
 }
 
 ##########################################
-# Provider AWS
-##########################################
-provider "aws" {
-  region = var.region
-
-  default_tags {
-    tags = {
-      ManagedBy = "Terraform"
-      Project   = var.project_id
-      Env       = var.env
-      Purpose   = "IAM Management"
-    }
-  }
-}
-
-##########################################
 # Utilisateurs IAM - Étudiants & Jérémie
 ##########################################
 
