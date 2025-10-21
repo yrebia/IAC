@@ -61,8 +61,8 @@ module "permissions" {
 
 # Locals pour rendre les permissions optionnelles
 locals {
-  permissions_enabled      = var.enable_permissions
-  github_actions_role_arn  = local.permissions_enabled ? module.permissions.github_actions_role_arn : null
+  permissions_enabled     = var.enable_permissions
+  github_actions_role_arn = local.permissions_enabled ? module.permissions.github_actions_role_arn : null
 }
 
 ##########################################
