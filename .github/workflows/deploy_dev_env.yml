@@ -53,7 +53,7 @@ jobs:
 
       - name: Terraform Apply (dev)
         run: |
-          terraform apply -var-file="dev.tfvars" -var="enable_permissions=false" -auto-approve -no-color | tee terraform.log
+          terraform apply -var-file="dev.tfvars" -var="enable_permissions=false" -var="aws_account_id=${{ secrets.AWS_ACCOUNT_ID }}" -auto-approve -no-color | tee terraform.log
           status=$?
           if [ $status -ne 0 ]; then
             if grep -q "dial tcp" terraform.log || grep -q "validate_cluster_service_cidr" terraform.log; then
