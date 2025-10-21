@@ -118,36 +118,38 @@ resource "aws_iam_role_policy" "terraform_policy" {
           "s3:*",
           "dynamodb:*",
 
-          # --- EC2 / Network / VPC
+          # --- EC2 / Network / VPC / SG
           "ec2:*",
 
-          # --- IAM (gestion des rôles EKS et permissions Terraform)
+          # --- IAM : gestion complète pour Terraform (EKS / RDS / roles)
           "iam:CreateRole",
           "iam:DeleteRole",
           "iam:AttachRolePolicy",
           "iam:DetachRolePolicy",
           "iam:PassRole",
           "iam:GetRole",
+          "iam:ListRoles",
           "iam:ListAttachedRolePolicies",
           "iam:CreateInstanceProfile",
           "iam:AddRoleToInstanceProfile",
           "iam:RemoveRoleFromInstanceProfile",
           "iam:DeleteInstanceProfile",
+          "iam:TagRole",
 
-          # --- EKS (gestion du cluster et node groups)
+          # --- EKS (cluster et nodegroups)
           "eks:*",
 
-          # --- RDS (gestion DB)
+          # --- RDS (bases de données)
           "rds:*",
 
-          # --- Secrets Manager
+          # --- Secrets Manager (lecture / écriture secrets DB)
           "secretsmanager:*",
 
-          # --- KMS (pour decrypt si secrets chiffrés)
+          # --- KMS (si secrets chiffrés)
           "kms:Decrypt",
           "kms:DescribeKey",
 
-          # --- CloudWatch logs (pour le cluster EKS)
+          # --- CloudWatch (logs du cluster EKS)
           "logs:CreateLogGroup",
           "logs:DescribeLogGroups",
           "logs:PutRetentionPolicy"
