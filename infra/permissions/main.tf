@@ -224,10 +224,6 @@ resource "local_file" "jeremie_credentials" {
 ##########################################
 # Outputs
 ##########################################
-output "github_actions_role_arn" {
-  value = aws_iam_role.github_actions_role.arn
-}
-
 output "students_access_keys" {
   value = {
     for user, key in aws_iam_access_key.students :
