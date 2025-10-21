@@ -73,6 +73,7 @@ module "eks" {
     "subnet-079476718bf99b770",
     "subnet-0b13d0ce97c312357"
   ]
+
   cluster_endpoint_public_access = true
   enable_irsa                    = false
   create_kms_key                 = false
@@ -86,12 +87,47 @@ module "eks" {
     ManagedBy   = "Terraform"
   }
 
+  ##########################################
+  # Node groups (pools)
+  ##########################################
   eks_managed_node_groups = {
     apps = {
       desired_size   = 1
-      max_size       = 1
       min_size       = 1
+      max_size       = 2
       instance_types = ["t3.micro"]
+      labels = {
+        role = "app"
+      }
+      tags = {
+        Name = "apps-nodegroup"
+      }
+    }
+
+    monitoring = {
+      desired_size   = 0
+      min_size       = 0
+      max_size       = 1
+      instance_types = ["t3.micro"]
+      labels = {
+        role = "monitoring"
+      }
+      tags = {
+        Name = "monitoring-nodegroup"
+      }
+    }
+
+    gha = {
+      desired_size   = 0
+      min_size       = 0
+      max_size       = 1
+      instance_types = ["t3.micro"]
+      labels = {
+        role = "gha-runner"
+      }
+      tags = {
+        Name = "gha-nodegroup"
+      }
     }
   }
 }

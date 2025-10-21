@@ -10,3 +10,7 @@ output "cluster_certificate_authority_data" {
   value     = module.eks.cluster_certificate_authority_data
   sensitive = true
 }
+
+output "node_groups" {
+  value = module.eks.eks_managed_node_groups
+}
