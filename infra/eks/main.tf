@@ -12,9 +12,11 @@ terraform {
   }
 }
 
+##########################################
+# Providers AWS (désactivation des appels IAM)
+##########################################
 provider "aws" {
-  region = var.region
-
+  region                      = var.region
   skip_metadata_api_check     = true
   skip_requesting_account_id  = true
   skip_credentials_validation = true
@@ -23,31 +25,43 @@ provider "aws" {
     tags = {
       ManagedBy = "Terraform"
       Project   = var.project_id
-      Env       = var.env
+      Env       = "dev"
     }
   }
 }
 
+provider "aws" {
+  alias                       = "eks"
+  region                      = var.region
+  skip_metadata_api_check     = true
+  skip_requesting_account_id  = true
+  skip_credentials_validation = true
+}
+
 ##########################################
-# EKS Cluster
+# Module EKS (cluster)
 ##########################################
 module "eks" {
-  source  = "terraform-aws-modules/eks/aws"
-  version = "20.24.1"
+  source                    = "terraform-aws-modules/eks/aws"
+  version                   = "20.24.1"
+  cluster_encryption_config = {}
 
-  cluster_name    = var.cluster_name
-  cluster_version = "1.31"
-  vpc_id          = var.vpc_id
-  subnet_ids      = [var.subnet_id]
 
+  providers = {
+    aws = aws.eks
+  }
+
+  cluster_name                   = var.cluster_name
+  cluster_version                = "1.31"
+  vpc_id                         = var.vpc_id
+  subnet_ids                     = [var.subnet_id]
   cluster_endpoint_public_access = true
   enable_irsa                    = false
   create_kms_key                 = false
-  cluster_encryption_config      = {}
 
   tags = {
     Project     = var.project_id
-    Environment = "dev"
+    Environment = var.env
     ManagedBy   = "Terraform"
   }
 
@@ -62,7 +76,7 @@ module "eks" {
 }
 
 ##########################################
-# EKS Access Entries
+# EKS Access Entries + Policies
 ##########################################
 # GitHub Actions
 resource "aws_eks_access_entry" "github_actions" {
@@ -73,7 +87,7 @@ resource "aws_eks_access_entry" "github_actions" {
 
 resource "aws_eks_access_policy_association" "github_actions_admin" {
   cluster_name  = module.eks.cluster_name
-  principal_arn = aws_eks_access_entry.github_actions.principal_arn
+  principal_arn = var.github_actions_role_arn
   policy_arn    = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
 
   access_scope {
@@ -81,25 +95,18 @@ resource "aws_eks_access_policy_association" "github_actions_admin" {
   }
 }
 
-data "aws_caller_identity" "current" {}
-
-locals {
-  aws_account_id = data.aws_caller_identity.current.account_id
-}
-
 # Étudiants
 resource "aws_eks_access_entry" "students" {
   for_each      = { for s in var.students : s.username => s }
   cluster_name  = module.eks.cluster_name
-  principal_arn = "arn:aws:iam::${local.aws_account_id}:user/${each.value.username}"
+  principal_arn = "arn:aws:iam::${var.aws_account_id}:user/${each.value.username}"
   type          = "STANDARD"
 }
 
 resource "aws_eks_access_policy_association" "students_view" {
-  for_each = aws_eks_access_entry.students
-
+  for_each      = { for s in var.students : s.username => s }
   cluster_name  = module.eks.cluster_name
-  principal_arn = each.value.principal_arn
+  principal_arn = "arn:aws:iam::${var.aws_account_id}:user/${each.value.username}"
   policy_arn    = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSViewPolicy"
 
   access_scope {

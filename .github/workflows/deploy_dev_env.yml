@@ -47,11 +47,21 @@ jobs:
         run: terraform validate -no-color
 
       - name: Terraform Plan (dev)
+        id: plan
         run: |
-          terraform plan -var-file="dev.tfvars" -var="aws_account_id=${{ secrets.AWS_ACCOUNT_ID }}" -no-color -input=false -detailed-exitcode || true
+          set -e
+          terraform plan \
+            -var-file="dev.tfvars" \
+            -var="aws_account_id=${{ secrets.AWS_ACCOUNT_ID }}" \
+            -no-color -input=false -detailed-exitcode
 
-
+      - name: Terraform Apply (dev)
+        run: |
+          set -e
+          terraform apply \
+            -var-file="dev.tfvars" \
+            -var="aws_account_id=${{ secrets.AWS_ACCOUNT_ID }}" \
+            -auto-approve -lock-timeout=5m -no-color
 
       - name: Show Outputs
-        if: github.event_name != 'pull_request'
         run: terraform output -json | jq
