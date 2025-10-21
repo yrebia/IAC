@@ -104,8 +104,14 @@ resource "aws_iam_user_login_profile" "jeremie_console" {
 ##########################################
 # OpenID Connect Provider GitHub (existant)
 ##########################################
-data "aws_iam_openid_connect_provider" "github" {
-  arn = "arn:aws:iam::${var.aws_account_id}:oidc-provider/token.actions.githubusercontent.com"
+resource "aws_iam_openid_connect_provider" "github" {
+  url             = "https://token.actions.githubusercontent.com"
+  client_id_list  = ["sts.amazonaws.com"]
+  thumbprint_list = ["6938fd4d98bab03faadb97b34396831e3780aea1"]
+
+  lifecycle {
+    ignore_changes = all
+  }
 }
 
 ##########################################
@@ -120,7 +126,7 @@ resource "aws_iam_role" "github_actions_role" {
       {
         Effect = "Allow"
         Principal = {
-          Federated = data.aws_iam_openid_connect_provider.github.arn
+          Federated = aws_iam_openid_connect_provider.github.arn
         }
         Action = "sts:AssumeRoleWithWebIdentity"
         Condition = {

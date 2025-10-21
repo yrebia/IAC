@@ -17,8 +17,8 @@ output "jeremie_secret_access_key" {
 }
 
 output "jeremie_console_username" {
-  value       = aws_iam_user.jeremie.name
-  description = "Console username for Jérémie"
+  value       = data.aws_iam_user.jeremie.user_name
+  description = "Nom d'utilisateur IAM de Jérémie"
 }
 
 output "jeremie_console_password" {

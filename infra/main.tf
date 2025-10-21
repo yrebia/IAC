@@ -48,8 +48,8 @@ module "permissions" {
   project_id = var.project_id
   env        = var.env
   region     = var.region
+  aws_account_id = var.aws_account_id
 
-  # ⚙️ Liste des étudiants (anonymisée)
   students = [
     { username = "student1" },
     { username = "student2" },
