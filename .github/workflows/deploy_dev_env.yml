@@ -51,19 +51,25 @@ jobs:
         continue-on-error: true
         run: terraform plan -var-file="dev.tfvars" -var="enable_permissions=false" -var="aws_account_id=${{ secrets.AWS_ACCOUNT_ID }}" -no-color
 
-      - name: Terraform Apply (dev)
+      - name: Terraform Apply (with retry on state lock)
         run: |
-          terraform apply -var-file="dev.tfvars" -var="enable_permissions=false" -var="aws_account_id=${{ secrets.AWS_ACCOUNT_ID }}" -auto-approve -no-color | tee terraform.log
-          status=$?
-          if [ $status -ne 0 ]; then
-            if grep -q "dial tcp" terraform.log || grep -q "validate_cluster_service_cidr" terraform.log; then
-              echo "🟡 Ignoring transient EKS connectivity error."
-            else
-              echo "❌ Terraform failed with code $status."
-              exit $status
-              fi
-          fi
+          for i in {1..3}; do
+            echo "🚀 Running Terraform apply (attempt $i)..."
+            terraform apply \
+              -var-file="dev.tfvars" \
+              -var="enable_permissions=false" \
+              -var="aws_account_id=${{ secrets.AWS_ACCOUNT_ID }}" \
+              -auto-approve -no-color | tee terraform.log && break
 
+            status=$?
+            if grep -q "Error acquiring the state lock" terraform.log; then
+              echo "🔒 State lock detected, retrying in 30s..."
+              sleep 30
+            else
+              echo "❌ Terraform apply failed (code $status)"
+              exit $status
+            fi
+          done
 
       - name: Show Outputs
         run: terraform output -json | jq
