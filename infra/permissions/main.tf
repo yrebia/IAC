@@ -205,7 +205,8 @@ resource "aws_iam_role_policy" "terraform_policy" {
           "kms:DescribeKey",
           "logs:CreateLogGroup",
           "logs:DescribeLogGroups",
-          "logs:PutRetentionPolicy"
+          "logs:PutRetentionPolicy",
+          "logs:TagResource"
         ],
         Resource = "*"
       }

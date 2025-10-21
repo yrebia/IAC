@@ -66,10 +66,13 @@ module "eks" {
     aws = aws.eks
   }
 
-  cluster_name                   = var.cluster_name
-  cluster_version                = "1.31"
-  vpc_id                         = var.vpc_id
-  subnet_ids                     = [var.subnet_id]
+  cluster_name    = var.cluster_name
+  cluster_version = "1.31"
+  vpc_id          = var.vpc_id
+  subnet_ids = [
+    "subnet-079476718bf99b770",
+    "subnet-0b13d0ce97c312357"
+  ]
   cluster_endpoint_public_access = true
   enable_irsa                    = false
   create_kms_key                 = false
