@@ -49,11 +49,11 @@ jobs:
       - name: Terraform Plan (dev)
         id: plan
         continue-on-error: true
-        run: terraform plan -var-file="dev.tfvars" -var="enable_permissions=false" -no-color
+        run: terraform plan -var-file="dev.tfvars" -var="enable_permissions=false" -var="aws_account_id=${{ secrets.AWS_ACCOUNT_ID }}" -no-color
 
       - name: Terraform Apply (dev)
         if: steps.plan.outcome == 'failure' || steps.plan.outcome == 'success'
-        run: terraform apply -var-file="dev.tfvars" -var="enable_permissions=false" -auto-approve -no-color
+        run: terraform apply -var-file="dev.tfvars" -var="enable_permissions=false" -var="aws_account_id=${{ secrets.AWS_ACCOUNT_ID }}" -auto-approve -no-color
 
       - name: Show Outputs
         run: terraform output -json | jq
