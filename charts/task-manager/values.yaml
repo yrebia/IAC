@@ -1,0 +1,105 @@
+replicaCount: 1
+
+image:
+  repository: nginxinc/nginx-unprivileged
+  tag: "stable-alpine"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 8080
+  targetPort: 8080
+
+ingress:
+  enabled: true
+  className: alb
+  host: taskmgr.example.com
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443}]'
+
+
+nodeSelector:
+  workload: app
+
+tolerations: []
+affinity:
+  podAntiAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      - labelSelector:
+          matchExpressions:
+            - key: app.kubernetes.io/name
+              operator: In
+              values: ["task-manager"]
+        topologyKey: kubernetes.io/hostname
+
+topologySpreadConstraints:
+  - maxSkew: 1
+    topologyKey: topology.kubernetes.io/zone
+    whenUnsatisfiable: DoNotSchedule
+    labelSelector:
+      matchLabels:
+        app.kubernetes.io/name: task-manager
+
+resources:
+  requests: { cpu: 100m, memory: 128Mi }
+  limits:   { cpu: 200m, memory: 256Mi }
+
+serviceAccount:
+  create: true
+  name: ""
+  automount: false
+  annotations: {}
+
+rbac:
+  enabled: true
+
+networkPolicy:
+  allowDNS: true
+  allowFromKubeSystem: true
+
+  allowDB:
+    enabled: true
+    cidrs:
+      - "10.0.2.0/24"
+ 
+
+quota:
+  enabled: true
+  hard:
+    pods: "10"
+    requests.cpu: "1"
+    requests.memory: "1Gi"
+    limits.cpu: "2"
+    limits.memory: "2Gi"
+
+limitRange:
+  enabled: true
+  default:
+    cpu: "250m"
+    memory: "256Mi"
+  defaultRequest:
+    cpu: "100m"
+    memory: "128Mi"
+
+securityContext:
+  fsGroup: 2000
+  runAsNonRoot: true
+  seccompProfile: { type: RuntimeDefault }
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities: { drop: ["ALL"] }
+
+db:
+  enabled: true
+  secretName: task-manager-db
+  useDatabaseUrl: true          # si app lit DATABASE_URL; sinon false
+
+hpa:
+  enabled: false
+  minReplicas: 2
+  maxReplicas: 5
+  cpuAverageUtilization: 70
