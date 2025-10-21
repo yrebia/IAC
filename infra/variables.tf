@@ -15,7 +15,7 @@ variable "region" {
 variable "cluster_name" {
   type        = string
   description = "Nom du cluster EKS"
-  default     = "tmgr-eks"
+  default     = "tmgr-eks3"
 }
 
 ##########################################
