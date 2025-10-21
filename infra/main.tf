@@ -40,32 +40,6 @@ module "network" {
 }
 
 ##########################################
-# Module Permissions (IAM & OIDC)
-##########################################
-module "permissions" {
-  source = "./permissions"
-
-  project_id     = var.project_id
-  env            = var.env
-  region         = var.region
-  aws_account_id = var.aws_account_id
-
-  # Si enable_permissions = false → liste vide → aucune ressource IAM créée
-  students = var.enable_permissions ? [
-    { username = "student1" },
-    { username = "student2" },
-    { username = "student3" },
-    { username = "student4" }
-  ] : []
-}
-
-# Locals pour rendre les permissions optionnelles
-locals {
-  permissions_enabled     = var.enable_permissions
-  github_actions_role_arn = local.permissions_enabled ? module.permissions.github_actions_role_arn : null
-}
-
-##########################################
 # Module EKS (Cluster)
 ##########################################
 module "eks" {
@@ -76,7 +50,7 @@ module "eks" {
   cluster_name = var.cluster_name
   env          = var.env
 
-  # Permissions IAM (désactivées si enable_permissions=false)
+  # Permissions IAM (optionnelles)
   github_actions_role_arn = local.github_actions_role_arn
   students                = var.students
   aws_account_id          = var.aws_account_id
