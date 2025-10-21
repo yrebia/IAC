@@ -110,42 +110,51 @@ resource "aws_iam_role_policy" "terraform_policy" {
 
   policy = jsonencode({
     Version = "2012-10-17",
-    Statement = [{
-      Effect = "Allow",
-      Action = [
-        # Backend TF
-        "s3:*",
-        "dynamodb:*",
+    Statement = [
+      {
+        Effect = "Allow",
+        Action = [
+          # --- Terraform Backend
+          "s3:*",
+          "dynamodb:*",
 
-        # Réseau VPC de base
-        "ec2:CreateVpc", "ec2:DeleteVpc", "ec2:DescribeVpcs", "ec2:DescribeVpcAttribute", "ec2:ModifyVpcAttribute",
-        "ec2:DescribeSubnets", "ec2:CreateSubnet", "ec2:DeleteSubnet",
-        "ec2:DescribeRouteTables", "ec2:CreateRouteTable", "ec2:DeleteRouteTable", "ec2:AssociateRouteTable", "ec2:DisassociateRouteTable",
-        "ec2:CreateInternetGateway", "ec2:AttachInternetGateway", "ec2:DetachInternetGateway", "ec2:DeleteInternetGateway",
+          # --- EC2 / Network / VPC
+          "ec2:*",
 
-        # ➕ Security Groups (RDS)
-        "ec2:CreateSecurityGroup", "ec2:DeleteSecurityGroup", "ec2:DescribeSecurityGroups",
-        "ec2:AuthorizeSecurityGroupIngress", "ec2:AuthorizeSecurityGroupEgress",
-        "ec2:RevokeSecurityGroupIngress", "ec2:RevokeSecurityGroupEgress",
+          # --- IAM (gestion des rôles EKS et permissions Terraform)
+          "iam:CreateRole",
+          "iam:DeleteRole",
+          "iam:AttachRolePolicy",
+          "iam:DetachRolePolicy",
+          "iam:PassRole",
+          "iam:GetRole",
+          "iam:ListAttachedRolePolicies",
+          "iam:CreateInstanceProfile",
+          "iam:AddRoleToInstanceProfile",
+          "iam:RemoveRoleFromInstanceProfile",
+          "iam:DeleteInstanceProfile",
 
-        # IAM (lecture basique)
-        "iam:GetUser", "iam:ListAccessKeys", "iam:GetLoginProfile", "iam:ListAttachedUserPolicies",
+          # --- EKS (gestion du cluster et node groups)
+          "eks:*",
 
-        # EKS (lecture pour provider kubernetes/helm)
-        "eks:DescribeCluster", "eks:ListClusters",
+          # --- RDS (gestion DB)
+          "rds:*",
 
-        # ➕ RDS (subnet group + instance)
-        "rds:CreateDBSubnetGroup", "rds:ModifyDBSubnetGroup", "rds:DeleteDBSubnetGroup", "rds:DescribeDBSubnetGroups",
-        "rds:CreateDBInstance", "rds:ModifyDBInstance", "rds:DeleteDBInstance", "rds:DescribeDBInstances",
-        "rds:AddTagsToResource", "rds:ListTagsForResource",
+          # --- Secrets Manager
+          "secretsmanager:*",
 
-        # ➕ Secrets Manager (lecture du mot de passe RDS)
-        "secretsmanager:GetSecretValue", "secretsmanager:DescribeSecret"
+          # --- KMS (pour decrypt si secrets chiffrés)
+          "kms:Decrypt",
+          "kms:DescribeKey",
 
-        # Si secret chiffré par KMS CMK custom, ajouter : "kms:Decrypt"
-      ],
-      Resource = "*"
-    }]
+          # --- CloudWatch logs (pour le cluster EKS)
+          "logs:CreateLogGroup",
+          "logs:DescribeLogGroups",
+          "logs:PutRetentionPolicy"
+        ],
+        Resource = "*"
+      }
+    ]
   })
 }
 
