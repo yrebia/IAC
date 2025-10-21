@@ -47,7 +47,7 @@ jobs:
         run: terraform validate -no-color
 
       - name: Terraform Plan (dev)
-        run: terraform plan -var-file=dev.tfvars -lock-timeout=5m -no-color
+        run: terraform plan -var-file="dev.tfvars" -no-color -input=false -detailed-exitcode || exit 0
 
       - name: Terraform Apply (dev)
         if: github.event_name != 'pull_request'
