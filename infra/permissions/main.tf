@@ -42,12 +42,14 @@ resource "aws_iam_user" "students" {
 
   name = each.value.username
 
+  lifecycle {
+    ignore_changes = all
+  }
+
   tags = {
-    Project  = var.project_id
-    Env      = var.env
-    Email    = each.value.email
-    FullName = each.value.fullname
-    Role     = "Student"
+    Project = var.project_id
+    Env     = var.env
+    Role    = "Student"
   }
 }
 
@@ -70,43 +72,40 @@ resource "aws_iam_access_key" "students" {
   user     = each.value.name
 }
 
-# --- Comptes IAM Jérémie (ReadOnly + console) ---
-resource "aws_iam_user" "jeremie" {
-  name = "jeremie"
-  tags = {
-    Project = var.project_id
-    Env     = var.env
-    Role    = "Instructor"
-  }
+##########################################
+# Compte IAM Jérémie (existant)
+##########################################
+
+# Utilisateur déjà présent dans AWS → data source
+data "aws_iam_user" "jeremie" {
+  user_name = "jeremie"
 }
 
 resource "aws_iam_user_policy_attachment" "jeremie_readonly" {
-  user       = aws_iam_user.jeremie.name
+  user       = data.aws_iam_user.jeremie.user_name
   policy_arn = "arn:aws:iam::aws:policy/ReadOnlyAccess"
 }
 
 resource "aws_iam_user_policy_attachment" "jeremie_change_password" {
-  user       = aws_iam_user.jeremie.name
+  user       = data.aws_iam_user.jeremie.user_name
   policy_arn = "arn:aws:iam::aws:policy/IAMUserChangePassword"
 }
 
 resource "aws_iam_access_key" "jeremie" {
-  user = aws_iam_user.jeremie.name
+  user = data.aws_iam_user.jeremie.user_name
 }
 
 resource "aws_iam_user_login_profile" "jeremie_console" {
-  user                    = aws_iam_user.jeremie.name
+  user                    = data.aws_iam_user.jeremie.user_name
   password_length         = 20
   password_reset_required = true
 }
 
 ##########################################
-# OpenID Connect Provider pour GitHub Actions
+# OpenID Connect Provider GitHub (existant)
 ##########################################
-resource "aws_iam_openid_connect_provider" "github" {
-  url             = "https://token.actions.githubusercontent.com"
-  client_id_list  = ["sts.amazonaws.com"]
-  thumbprint_list = ["6938fd4d98bab03faadb97b34396831e3780aea1"]
+data "aws_iam_openid_connect_provider" "github" {
+  arn = "arn:aws:iam::${var.aws_account_id}:oidc-provider/token.actions.githubusercontent.com"
 }
 
 ##########################################
@@ -121,7 +120,7 @@ resource "aws_iam_role" "github_actions_role" {
       {
         Effect = "Allow"
         Principal = {
-          Federated = aws_iam_openid_connect_provider.github.arn
+          Federated = data.aws_iam_openid_connect_provider.github.arn
         }
         Action = "sts:AssumeRoleWithWebIdentity"
         Condition = {
@@ -150,17 +149,19 @@ resource "aws_iam_role_policy" "terraform_policy" {
       {
         Effect = "Allow",
         Action = [
-          # Terraform Backend
+          # Backend Terraform
           "s3:*",
           "dynamodb:*",
 
-          # EC2 / Network / VPC / SG
+          # Réseau / EC2 / SG
           "ec2:*",
 
-          # IAM Management
+          # IAM Management complet
           "iam:CreateRole",
           "iam:DeleteRole",
           "iam:GetRole",
+          "iam:GetRolePolicy",
+          "iam:ListRolePolicies",
           "iam:PassRole",
           "iam:AttachRolePolicy",
           "iam:DetachRolePolicy",
@@ -195,7 +196,7 @@ resource "aws_iam_role_policy" "terraform_policy" {
 }
 
 ##########################################
-# Fichiers de credentials locaux
+# Fichiers credentials locaux
 ##########################################
 resource "local_file" "students_credentials" {
   for_each = aws_iam_access_key.students
@@ -212,10 +213,28 @@ resource "local_file" "students_credentials" {
 resource "local_file" "jeremie_credentials" {
   filename = "${path.module}/credentials/jeremie_credentials.json"
   content = jsonencode({
-    username          = aws_iam_user.jeremie.name
+    username          = data.aws_iam_user.jeremie.user_name
     access_key_id     = aws_iam_access_key.jeremie.id
     secret_access_key = aws_iam_access_key.jeremie.secret
     region            = var.region
   })
   file_permission = "0600"
+}
+
+##########################################
+# Outputs
+##########################################
+output "github_actions_role_arn" {
+  value = aws_iam_role.github_actions_role.arn
+}
+
+output "students_access_keys" {
+  value = {
+    for user, key in aws_iam_access_key.students :
+    user => {
+      access_key_id     = key.id
+      secret_access_key = key.secret
+    }
+  }
+  sensitive = true
 }

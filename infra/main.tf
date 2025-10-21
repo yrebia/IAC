@@ -49,11 +49,12 @@ module "permissions" {
   env        = var.env
   region     = var.region
 
+  # ⚙️ Liste des étudiants (anonymisée)
   students = [
-    { username = "pauline", email = "pauline@epitech.eu", fullname = "Pauline Dupont" },
-    { username = "yanis", email = "yanis@epitech.eu", fullname = "Yanis Benali" },
-    { username = "aldric", email = "aldric@epitech.eu", fullname = "Aldric Martin" },
-    { username = "mathieu", email = "mathieu@epitech.eu", fullname = "Mathieu Lambert" }
+    { username = "student1" },
+    { username = "student2" },
+    { username = "student3" },
+    { username = "student4" }
   ]
 }
 

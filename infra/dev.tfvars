@@ -1,6 +1,6 @@
 project_id   = "team1-dev"
 region       = "eu-west-3"
-cluster_name = "tmgr-eks3"
+cluster_name = "tmgr-eks"
 env          = "dev"
 
 vpc_name       = "team1-dev-vpc"

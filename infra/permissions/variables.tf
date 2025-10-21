@@ -1,23 +1,26 @@
 variable "project_id" {
-  description = "Project identifier (e.g., student-team1-dev)"
   type        = string
+  description = "Project identifier"
 }
 
 variable "env" {
-  description = "Environment (e.g., dev or prod)"
   type        = string
+  description = "Environment (e.g., dev, prod)"
 }
 
 variable "region" {
-  description = "AWS region for IAM resources"
   type        = string
+  description = "AWS region (e.g., eu-west-3)"
+}
+
+variable "aws_account_id" {
+  type        = string
+  description = "AWS Account ID (utilisé pour référencer des ressources IAM existantes)"
 }
 
 variable "students" {
-  description = "List of students with name and email"
+  description = "Liste des étudiants (uniquement usernames)"
   type = list(object({
     username = string
-    email    = string
-    fullname = string
   }))
 }
