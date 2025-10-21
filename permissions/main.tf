@@ -61,9 +61,15 @@ resource "aws_iam_access_key" "jeremie" {
 }
 
 resource "aws_iam_user_login_profile" "jeremie_console" {
-  user                    = aws_iam_user.jeremie.name
-  password_length         = 20
-  password_reset_required = true
+  user = "jeremie"
+
+  lifecycle {
+    ignore_changes = [
+      password,
+      password_reset_required,
+      password_length,
+    ]
+  }
 }
 
 ##########################################
@@ -122,6 +128,9 @@ resource "aws_iam_role_policy" "terraform_policy" {
         "ec2:DescribeSubnets", "ec2:CreateSubnet", "ec2:DeleteSubnet",
         "ec2:DescribeRouteTables", "ec2:CreateRouteTable", "ec2:DeleteRouteTable", "ec2:AssociateRouteTable", "ec2:DisassociateRouteTable",
         "ec2:CreateInternetGateway", "ec2:AttachInternetGateway", "ec2:DetachInternetGateway", "ec2:DeleteInternetGateway",
+        "ec2:CreateLaunchTemplate", "ec2:DeleteLaunchTemplate", "ec2:DescribeLaunchTemplates", "ec2:CreateLaunchTemplateVersion",
+        "ec2:DescribeInstances", "ec2:RunInstances", "ec2:TerminateInstances",
+        "ec2:DescribeTags", "ec2:DeleteTags", "ec2:DescribeLaunchTemplateVersions", "ec2:CreateTags",
 
         # ➕ Security Groups (RDS)
         "ec2:CreateSecurityGroup", "ec2:DeleteSecurityGroup", "ec2:DescribeSecurityGroups",
@@ -132,7 +141,9 @@ resource "aws_iam_role_policy" "terraform_policy" {
         "iam:GetUser", "iam:ListAccessKeys", "iam:GetLoginProfile", "iam:ListAttachedUserPolicies",
 
         # EKS (lecture pour provider kubernetes/helm)
-        "eks:DescribeCluster", "eks:ListClusters",
+        "eks:DescribeCluster", "eks:ListClusters", "eks:CreateCluster", "eks:DeleteCluster", "eks:UpdateClusterVersion",
+        "eks:CreateNodegroup", "eks:DeleteNodegroup", "eks:UpdateNodegroupVersion", "eks:UpdateNodegroupConfig",
+        "eks:DescribeNodegroup", "eks:TagResource", "eks:UntagResource",
 
         # ➕ RDS (subnet group + instance)
         "rds:CreateDBSubnetGroup", "rds:ModifyDBSubnetGroup", "rds:DeleteDBSubnetGroup", "rds:DescribeDBSubnetGroups",
@@ -140,9 +151,11 @@ resource "aws_iam_role_policy" "terraform_policy" {
         "rds:AddTagsToResource", "rds:ListTagsForResource",
 
         # ➕ Secrets Manager (lecture du mot de passe RDS)
-        "secretsmanager:GetSecretValue", "secretsmanager:DescribeSecret"
+        "secretsmanager:GetSecretValue", "secretsmanager:DescribeSecret",
 
         # Si secret chiffré par KMS CMK custom, ajouter : "kms:Decrypt"
+        "iam:GetRole", "iam:ListRolePolicies", "iam:ListAttachedRolePolicies", "iam:*",
+        "logs:*"
       ],
       Resource = "*"
     }]
@@ -153,7 +166,7 @@ resource "aws_iam_role_policy" "terraform_policy" {
 # Accès EKS - GitHub Actions
 ##########################################
 resource "aws_eks_access_entry" "github_actions" {
-  cluster_name  = "tmgr-eks3"
+  cluster_name  = "tmgr-eks"
   principal_arn = aws_iam_role.github_actions_role.arn
   type          = "STANDARD"
 
@@ -164,7 +177,7 @@ resource "aws_eks_access_entry" "github_actions" {
 }
 
 resource "aws_eks_access_policy_association" "github_actions_admin" {
-  cluster_name  = "tmgr-eks3"
+  cluster_name  = "tmgr-eks"
   principal_arn = aws_iam_role.github_actions_role.arn
   policy_arn    = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
 
@@ -176,7 +189,7 @@ resource "aws_eks_access_policy_association" "github_actions_admin" {
 ##########################################
 resource "aws_eks_access_entry" "students" {
   for_each      = aws_iam_user.students
-  cluster_name  = "tmgr-eks3"
+  cluster_name  = "tmgr-eks"
   principal_arn = each.value.arn
   type          = "STANDARD"
 
@@ -188,7 +201,7 @@ resource "aws_eks_access_entry" "students" {
 
 resource "aws_eks_access_policy_association" "students_cluster_admin" {
   for_each      = aws_iam_user.students
-  cluster_name  = "tmgr-eks3"
+  cluster_name  = "tmgr-eks"
   principal_arn = each.value.arn
   policy_arn    = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
 
