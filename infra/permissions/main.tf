@@ -198,7 +198,6 @@ resource "aws_eks_access_policy_association" "students_cluster_admin" {
 ##########################################
 # MODULE : Permissions EKS (aws-auth)
 ##########################################
-
 data "aws_eks_cluster" "this" {
   name = var.cluster_name
 }
@@ -256,4 +255,26 @@ resource "kubernetes_config_map" "aws_auth" {
       }
     ])
   }
+}
+
+##########################################
+# 👇 NOUVEAU : Autorisation EKS pour Terraform CI/CD
+##########################################
+resource "aws_iam_role_policy" "gha_terraform_eks_access" {
+  name = "TerraformEKSAccess"
+  role = aws_iam_role.github_actions_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "iam:GetRole",
+          "iam:PassRole"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
 }

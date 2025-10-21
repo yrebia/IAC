@@ -9,7 +9,8 @@ variable "project_id" {
 
 variable "region" {
   type        = string
-  description = "Région AWS (ex: eu-west-3)"
+  description = "AWS region"
+  default     = "eu-west-3"
 }
 
 variable "cluster_name" {
@@ -103,4 +104,9 @@ variable "db_password" {
   description = "Mot de passe administrateur de la base"
   sensitive   = true
   default     = "ChangeMe123!"
+}
+
+variable "env" {
+  description = "Environment (dev, prod, etc.)"
+  type        = string
 }

@@ -40,6 +40,18 @@ module "network" {
 }
 
 ##########################################
+# Module Permissions (IAM & EKS Access)
+##########################################
+module "permissions" {
+  source = "./permissions"
+
+  project_id   = var.project_id
+  env          = var.env
+  region       = var.region
+  cluster_name = module.eks.cluster_name
+}
+
+##########################################
 # Module EKS (Cluster)
 ##########################################
 module "eks" {
