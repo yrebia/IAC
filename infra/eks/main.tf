@@ -94,11 +94,14 @@ module "eks" {
     apps = {
       desired_size   = 1
       min_size       = 1
-      max_size       = 2
+      max_size       = 1
       instance_types = ["t3.micro"]
+      capacity_type  = "ON_DEMAND"
+
       labels = {
         role = "app"
       }
+
       tags = {
         Name = "apps-nodegroup"
       }
@@ -109,9 +112,12 @@ module "eks" {
       min_size       = 0
       max_size       = 1
       instance_types = ["t3.micro"]
+      capacity_type  = "ON_DEMAND"
+
       labels = {
         role = "monitoring"
       }
+
       tags = {
         Name = "monitoring-nodegroup"
       }
@@ -122,9 +128,12 @@ module "eks" {
       min_size       = 0
       max_size       = 1
       instance_types = ["t3.micro"]
+      capacity_type  = "ON_DEMAND"
+
       labels = {
         role = "gha-runner"
       }
+
       tags = {
         Name = "gha-nodegroup"
       }
