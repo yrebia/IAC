@@ -108,7 +108,7 @@ module "eks" {
     }
 
     monitoring = {
-      desired_size   = 0
+      desired_size   = 1
       min_size       = 0
       max_size       = 1
       instance_types = ["t3.micro"]
@@ -124,7 +124,7 @@ module "eks" {
     }
 
     gha = {
-      desired_size   = 0
+      desired_size   = 1
       min_size       = 0
       max_size       = 1
       instance_types = ["t3.micro"]
