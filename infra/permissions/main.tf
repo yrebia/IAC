@@ -153,35 +153,47 @@ resource "aws_iam_role_policy" "terraform_policy" {
     Version = "2012-10-17",
     Statement = [
       {
-        Effect = "Allow",
+        Sid    = "TerraformCoreAccess"
+        Effect = "Allow"
         Action = [
-          # Backend Terraform
+          # Terraform backend
           "s3:*",
           "dynamodb:*",
 
-          # Réseau / EC2 / SG
+          # Réseau / EC2
           "ec2:*",
 
-          # IAM Management complet
+          # IAM pour création / lecture / gestion de rôles
           "iam:CreateRole",
           "iam:DeleteRole",
           "iam:GetRole",
           "iam:GetRolePolicy",
+          "iam:GetInstanceProfile",
+          "iam:GetPolicy",
+          "iam:GetPolicyVersion",
+          "iam:ListPolicies",
+          "iam:ListInstanceProfiles",
+          "iam:ListInstanceProfilesForRole",
+          "iam:ListRoles",
           "iam:ListRolePolicies",
-          "iam:PassRole",
-          "iam:AttachRolePolicy",
-          "iam:DetachRolePolicy",
-          "iam:TagRole",
-          "iam:UntagRole",
-          "iam:PutRolePolicy",
-          "iam:DeleteRolePolicy",
-          "iam:UpdateAssumeRolePolicy",
+          "iam:ListAttachedRolePolicies",
           "iam:CreateInstanceProfile",
           "iam:AddRoleToInstanceProfile",
           "iam:RemoveRoleFromInstanceProfile",
           "iam:DeleteInstanceProfile",
-          "iam:ListRoles",
-          "iam:ListAttachedRolePolicies",
+          "iam:UpdateRole",
+          "iam:UpdateRoleDescription",
+          "iam:UpdateAssumeRolePolicy",
+          "iam:TagRole",
+          "iam:UntagRole",
+          "iam:TagPolicy",
+          "iam:UntagPolicy",
+          "iam:PassRole",
+          "iam:AttachRolePolicy",
+          "iam:DetachRolePolicy",
+          "iam:DeleteRolePolicy",
+          "iam:PutRolePolicy",
+          "iam:CreateServiceLinkedRole",
 
           # EKS / RDS / Secrets
           "eks:*",
