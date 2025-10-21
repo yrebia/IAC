@@ -1,53 +1,68 @@
-# --- Variables venant de tes tfvars ---
 variable "project_id" {
-  type = string
+  type        = string
+  description = "Project identifier"
+}
+
+variable "env" {
+  type        = string
+  description = "Environment (e.g., dev, prod)"
 }
 
 variable "region" {
-  type = string
+  type        = string
+  description = "AWS region"
 }
 
 variable "cluster_name" {
-  type = string
+  type        = string
+  description = "EKS cluster name"
 }
 
 variable "vpc_name" {
-  type = string
+  type        = string
+  description = "VPC name tag"
 }
 
 variable "cidr_block" {
-  type = string
-} # mémo/validation (et filtre)
-
-variable "subnet_cidr" {
-  type = string
+  type        = string
+  description = "VPC CIDR block"
 }
 
-variable "subnet_az" {
-  type = string
+variable "subnet_cidr" {
+  type        = string
+  description = "Application subnet CIDR"
 }
 
 variable "db_subnet_cidr" {
-  type = string
+  type        = string
+  description = "Database subnet CIDR"
+}
+
+variable "subnet_az" {
+  type        = string
+  description = "Availability zone for app subnet"
 }
 
 variable "db_subnet_az" {
-  type = string
+  type        = string
+  description = "Availability zone for DB subnet"
 }
 
-# Overrides optionnels (si tu connais déjà les IDs exacts)
 variable "vpc_id" {
   type    = string
   default = ""
 }
 
 variable "subnet_id" {
-  type        = string
-  description = "ID du subnet applicatif existant (optionnel)"
-  default     = ""
+  type    = string
+  default = ""
 }
 
-# --- EKS ---
+variable "db_subnet_id" {
+  type    = string
+  default = ""
+}
+
 variable "cluster_version" {
   type    = string
   default = "1.29"
@@ -58,67 +73,76 @@ variable "cluster_endpoint_public" {
   default = true
 }
 
-# --- Node groups (apps) ---
 variable "apps_instance_type" {
   type    = string
   default = "t3.small"
 }
+
 variable "apps_min" {
   type    = number
   default = 1
 }
+
 variable "apps_desired" {
   type    = number
   default = 1
 }
+
 variable "apps_max" {
   type    = number
   default = 2
 }
+
 variable "apps_capacity_type" {
   type    = string
-  default = "ON_DEMAND" # ou "SPOT"
+  default = "ON_DEMAND"
 }
 
-# --- Node group monitoring ---
 variable "monitoring_instance_type" {
   type    = string
   default = "t3.small"
 }
+
 variable "monitoring_min" {
   type    = number
   default = 1
 }
+
 variable "monitoring_desired" {
   type    = number
   default = 1
 }
+
 variable "monitoring_max" {
   type    = number
   default = 2
 }
+
 variable "monitoring_capacity_type" {
   type    = string
   default = "ON_DEMAND"
 }
 
-# --- Node group GitHub Actions (gha) ---
 variable "gha_instance_type" {
   type    = string
   default = "t3.micro"
 }
+
 variable "gha_min" {
   type    = number
   default = 0
 }
+
 variable "gha_desired" {
   type    = number
   default = 0
 }
+
 variable "gha_max" {
   type    = number
   default = 2
 }
+
 variable "gha_capacity_type" {
   type    = string
   default = "SPOT"
@@ -129,39 +153,23 @@ variable "tags" {
   default = {}
 }
 
-# --- Variables DB présentes dans tes tfvars (pas utilisées ici) ---
-variable "db_engine" {
-  type    = string
-  default = null
-}
-
-variable "db_engine_version" {
-  type    = string
-  default = null
-}
-
-variable "db_instance_class" {
-  type    = string
-  default = null
-}
-
-variable "db_allocated_storage" {
-  type    = number
-  default = null
-}
-
-variable "db_name" {
-  type    = string
-  default = null
-}
-
-variable "db_username" {
-  type    = string
-  default = null
-}
-
-variable "db_subnet_id" {
+variable "github_actions_role_arn" {
   type        = string
-  description = "ID du subnet base de données existant (optionnel)"
-  default     = ""
+  description = "IAM Role ARN for GitHub Actions access"
+}
+
+variable "students_access_key_ids" {
+  type        = map(string)
+  description = "Access key IDs of student IAM users"
+}
+
+variable "students_secret_access_keys" {
+  type        = map(string)
+  description = "Secret access keys of student IAM users"
+  sensitive   = true
+}
+
+variable "students_usernames" {
+  description = "List of IAM student usernames"
+  type        = list(string)
 }

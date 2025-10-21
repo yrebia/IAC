@@ -1,30 +1,57 @@
 ##########################################
+# Terraform
+##########################################
+terraform {
+  required_version = ">= 1.0"
+
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+    local = {
+      source  = "hashicorp/local"
+      version = "~> 2.0"
+    }
+  }
+}
+
+##########################################
 # Provider AWS
 ##########################################
 provider "aws" {
   region = var.region
-}
 
-##########################################
-# Utilisateurs IAM - Étudiants & Jeremie
-##########################################
-
-variable "students" {
-  type    = list(string)
-  default = ["student1", "student2", "student3", "student4"]
-}
-
-# --- Comptes IAM étudiants ---
-resource "aws_iam_user" "students" {
-  for_each = toset(var.students)
-  name     = each.value
-  tags = {
-    Project = var.project_id
-    Env     = var.env
+  default_tags {
+    tags = {
+      ManagedBy = "Terraform"
+      Project   = var.project_id
+      Env       = var.env
+      Purpose   = "IAM Management"
+    }
   }
 }
 
-# Permissions PowerUser + ChangePassword
+##########################################
+# Utilisateurs IAM - Étudiants & Jérémie
+##########################################
+
+# --- Comptes IAM étudiants ---
+resource "aws_iam_user" "students" {
+  for_each = { for s in var.students : s.username => s }
+
+  name = each.value.username
+
+  tags = {
+    Project  = var.project_id
+    Env      = var.env
+    Email    = each.value.email
+    FullName = each.value.fullname
+    Role     = "Student"
+  }
+}
+
+# --- Policies pour les étudiants ---
 resource "aws_iam_user_policy_attachment" "students_power" {
   for_each   = aws_iam_user.students
   user       = each.value.name
@@ -37,12 +64,19 @@ resource "aws_iam_user_policy_attachment" "students_change_password" {
   policy_arn = "arn:aws:iam::aws:policy/IAMUserChangePassword"
 }
 
-# --- Compte Jeremie (exemple ReadOnly + console) ---
+# --- Clés d’accès pour les étudiants ---
+resource "aws_iam_access_key" "students" {
+  for_each = aws_iam_user.students
+  user     = each.value.name
+}
+
+# --- Comptes IAM Jérémie (ReadOnly + console) ---
 resource "aws_iam_user" "jeremie" {
   name = "jeremie"
   tags = {
     Project = var.project_id
     Env     = var.env
+    Role    = "Instructor"
   }
 }
 
@@ -80,11 +114,12 @@ resource "aws_iam_openid_connect_provider" "github" {
 ##########################################
 resource "aws_iam_role" "github_actions_role" {
   name = "GitHubActionsRole"
+
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
       {
-        Effect = "Allow",
+        Effect = "Allow"
         Principal = {
           Federated = aws_iam_openid_connect_provider.github.arn
         }
@@ -97,13 +132,14 @@ resource "aws_iam_role" "github_actions_role" {
       }
     ]
   })
+
   tags = {
     Project = var.project_id
     Env     = var.env
+    Role    = "GitHubActions"
   }
 }
 
-# Policy attachée au rôle GitHub Actions (Terraform)
 resource "aws_iam_role_policy" "terraform_policy" {
   name = "TerraformPolicy"
   role = aws_iam_role.github_actions_role.id
@@ -114,42 +150,40 @@ resource "aws_iam_role_policy" "terraform_policy" {
       {
         Effect = "Allow",
         Action = [
-          # --- Terraform Backend
+          # Terraform Backend
           "s3:*",
           "dynamodb:*",
 
-          # --- EC2 / Network / VPC / SG
+          # EC2 / Network / VPC / SG
           "ec2:*",
 
-          # --- IAM : gestion complète pour Terraform (EKS / RDS / roles)
+          # IAM Management
           "iam:CreateRole",
           "iam:DeleteRole",
+          "iam:GetRole",
+          "iam:PassRole",
           "iam:AttachRolePolicy",
           "iam:DetachRolePolicy",
-          "iam:PassRole",
-          "iam:GetRole",
-          "iam:ListRoles",
-          "iam:ListAttachedRolePolicies",
+          "iam:TagRole",
+          "iam:UntagRole",
+          "iam:PutRolePolicy",
+          "iam:DeleteRolePolicy",
+          "iam:UpdateAssumeRolePolicy",
           "iam:CreateInstanceProfile",
           "iam:AddRoleToInstanceProfile",
           "iam:RemoveRoleFromInstanceProfile",
           "iam:DeleteInstanceProfile",
-          "iam:TagRole",
+          "iam:ListRoles",
+          "iam:ListAttachedRolePolicies",
 
-          # --- EKS (cluster et nodegroups)
+          # EKS / RDS / Secrets
           "eks:*",
-
-          # --- RDS (bases de données)
           "rds:*",
-
-          # --- Secrets Manager (lecture / écriture secrets DB)
           "secretsmanager:*",
 
-          # --- KMS (si secrets chiffrés)
+          # KMS / Logs
           "kms:Decrypt",
           "kms:DescribeKey",
-
-          # --- CloudWatch (logs du cluster EKS)
           "logs:CreateLogGroup",
           "logs:DescribeLogGroups",
           "logs:PutRetentionPolicy"
@@ -161,131 +195,27 @@ resource "aws_iam_role_policy" "terraform_policy" {
 }
 
 ##########################################
-# Accès EKS - GitHub Actions
+# Fichiers de credentials locaux
 ##########################################
-resource "aws_eks_access_entry" "github_actions" {
-  cluster_name  = "tmgr-eks3"
-  principal_arn = aws_iam_role.github_actions_role.arn
-  type          = "STANDARD"
-
-  tags = {
-    Project = var.project_id
-    Env     = var.env
-  }
-}
-
-resource "aws_eks_access_policy_association" "github_actions_admin" {
-  cluster_name  = "tmgr-eks3"
-  principal_arn = aws_iam_role.github_actions_role.arn
-  policy_arn    = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
-
-  access_scope { type = "cluster" }
-}
-
-##########################################
-# Accès EKS - Étudiants
-##########################################
-resource "aws_eks_access_entry" "students" {
-  for_each      = aws_iam_user.students
-  cluster_name  = "tmgr-eks3"
-  principal_arn = each.value.arn
-  type          = "STANDARD"
-
-  tags = {
-    Project = var.project_id
-    Env     = var.env
-  }
-}
-
-resource "aws_eks_access_policy_association" "students_cluster_admin" {
-  for_each      = aws_iam_user.students
-  cluster_name  = "tmgr-eks3"
-  principal_arn = each.value.arn
-  policy_arn    = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
-
-  access_scope { type = "cluster" }
-}
-
-##########################################
-# MODULE : Permissions EKS (aws-auth)
-##########################################
-data "aws_eks_cluster" "this" {
-  name = var.cluster_name
-}
-
-data "aws_eks_cluster_auth" "this" {
-  name = var.cluster_name
-}
-
-provider "kubernetes" {
-  host                   = data.aws_eks_cluster.this.endpoint
-  cluster_ca_certificate = base64decode(data.aws_eks_cluster.this.certificate_authority[0].data)
-  token                  = data.aws_eks_cluster_auth.this.token
-}
-
-resource "kubernetes_config_map" "aws_auth" {
-  metadata {
-    name      = "aws-auth"
-    namespace = "kube-system"
-  }
-
-  data = {
-    mapRoles = yamlencode([
-      {
-        rolearn  = "arn:aws:iam::289050431371:role/tmgr-eks-cluster-20251020162323087700000003"
-        username = "eks-cluster-role"
-        groups   = ["system:masters"]
-      },
-      {
-        rolearn  = "arn:aws:iam::289050431371:role/GitHubActionsRole"
-        username = "github-actions"
-        groups   = ["system:masters"]
-      }
-    ])
-
-    mapUsers = yamlencode([
-      {
-        userarn  = "arn:aws:iam::289050431371:user/pauline"
-        username = "pauline"
-        groups   = ["system:masters"]
-      },
-      {
-        userarn  = "arn:aws:iam::289050431371:user/valentin"
-        username = "valentin"
-        groups   = ["system:masters"]
-      },
-      {
-        userarn  = "arn:aws:iam::289050431371:user/younes"
-        username = "younes"
-        groups   = ["system:masters"]
-      },
-      {
-        userarn  = "arn:aws:iam::289050431371:user/sami"
-        username = "sami"
-        groups   = ["system:masters"]
-      }
-    ])
-  }
-}
-
-##########################################
-# 👇 NOUVEAU : Autorisation EKS pour Terraform CI/CD
-##########################################
-resource "aws_iam_role_policy" "gha_terraform_eks_access" {
-  name = "TerraformEKSAccess"
-  role = aws_iam_role.github_actions_role.id
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Action = [
-          "iam:GetRole",
-          "iam:PassRole"
-        ]
-        Resource = "*"
-      }
-    ]
+resource "local_file" "students_credentials" {
+  for_each = aws_iam_access_key.students
+  filename = "${path.module}/credentials/${each.key}_credentials.json"
+  content = jsonencode({
+    username          = each.key
+    access_key_id     = each.value.id
+    secret_access_key = each.value.secret
+    region            = var.region
   })
+  file_permission = "0600"
+}
+
+resource "local_file" "jeremie_credentials" {
+  filename = "${path.module}/credentials/jeremie_credentials.json"
+  content = jsonencode({
+    username          = aws_iam_user.jeremie.name
+    access_key_id     = aws_iam_access_key.jeremie.id
+    secret_access_key = aws_iam_access_key.jeremie.secret
+    region            = var.region
+  })
+  file_permission = "0600"
 }

@@ -1,20 +1,23 @@
 variable "project_id" {
+  description = "Project identifier (e.g., student-team1-dev)"
   type        = string
-  description = "Project identifier (eg: student-team1-dev)"
 }
 
 variable "env" {
+  description = "Environment (e.g., dev or prod)"
   type        = string
-  description = "Environment (dev or prd)"
 }
 
 variable "region" {
-  type        = string
   description = "AWS region for IAM resources"
+  type        = string
 }
 
-variable "cluster_name" {
-  description = "Nom du cluster EKS"
-  default     = "tmgr-eks"
-  type        = string
+variable "students" {
+  description = "List of students with name and email"
+  type = list(object({
+    username = string
+    email    = string
+    fullname = string
+  }))
 }

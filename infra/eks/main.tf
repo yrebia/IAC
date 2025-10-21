@@ -1,5 +1,5 @@
 ##########################################
-# Providers & Versions
+# Terraform Providers & Backend
 ##########################################
 terraform {
   required_version = ">= 1.6.0"
@@ -25,10 +25,8 @@ provider "aws" {
 }
 
 ##########################################
-# Lookups réseau (VPC + Subnets)
+# Network Lookups (VPC + Subnets)
 ##########################################
-
-# Recherche du VPC par Name + CIDR (fallback possible via var.vpc_id)
 data "aws_vpcs" "by_name_cidr" {
   filter {
     name   = "tag:Name"
@@ -42,12 +40,10 @@ data "aws_vpcs" "by_name_cidr" {
 }
 
 locals {
-  # Si vpc_id est renseigné, on l'utilise. Sinon, on cherche par tag/cidr.
   resolved_vpc_ids = var.vpc_id != "" ? [var.vpc_id] : data.aws_vpcs.by_name_cidr.ids
   existing_vpc_id  = element(local.resolved_vpc_ids, 0)
 }
 
-# Subnet "app" (subnet applicatif)
 data "aws_subnets" "app" {
   filter {
     name   = "vpc-id"
@@ -59,8 +55,7 @@ data "aws_subnets" "app" {
   }
 }
 
-# Subnet "db" (pour la base de données)
-data "aws_subnets" "db_by_cidr" {
+data "aws_subnets" "db" {
   filter {
     name   = "vpc-id"
     values = [local.existing_vpc_id]
@@ -71,32 +66,16 @@ data "aws_subnets" "db_by_cidr" {
   }
 }
 
-# Fallback si le subnet DB n'est pas trouvé par CIDR
-data "aws_subnets" "db_by_az" {
-  filter {
-    name   = "vpc-id"
-    values = [local.existing_vpc_id]
-  }
-  filter {
-    name   = "availability-zone"
-    values = [var.db_subnet_az]
-  }
-}
-
 locals {
-  app_subnet_ids = var.subnet_id != "" ? [var.subnet_id] : data.aws_subnets.app.ids
-  db_subnet_ids = var.db_subnet_id != "" ? [var.db_subnet_id] : (
-    length(data.aws_subnets.db_by_cidr.ids) > 0 ? data.aws_subnets.db_by_cidr.ids : data.aws_subnets.db_by_az.ids
-  )
   private_subnet_ids = [
-    element(local.app_subnet_ids, 0),
-    element(local.db_subnet_ids, 0)
+    element(data.aws_subnets.app.ids, 0),
+    element(data.aws_subnets.db.ids, 0)
   ]
 
   tags = merge(
     {
       Project     = var.project_id
-      Environment = "dev"
+      Environment = var.env
       ManagedBy   = "Terraform"
     },
     var.tags
@@ -104,7 +83,7 @@ locals {
 }
 
 ##########################################
-# Module EKS principal
+# EKS Cluster Module
 ##########################################
 module "eks" {
   source  = "terraform-aws-modules/eks/aws"
@@ -121,61 +100,58 @@ module "eks" {
 
   enable_irsa = true
 
-  ##########################################
-  # Add-ons EKS de base
-  ##########################################
   cluster_addons = {
     coredns    = { most_recent = true }
     kube-proxy = { most_recent = true }
     vpc-cni    = { most_recent = true }
   }
 
-  ##########################################
-  # Node Groups (3 pools)
-  ##########################################
   eks_managed_node_groups = {
-    # === Pool Applications ===
     apps = {
       instance_types = [var.apps_instance_type]
       min_size       = var.apps_min
       desired_size   = var.apps_desired
       max_size       = var.apps_max
       capacity_type  = var.apps_capacity_type
-      labels         = { pool = "apps" }
-    }
-
-    # === Pool Monitoring (Prometheus / Grafana / OTel) ===
-    monitoring = {
-      instance_types = [var.monitoring_instance_type]
-      min_size       = var.monitoring_min
-      desired_size   = var.monitoring_desired
-      max_size       = var.monitoring_max
-      capacity_type  = var.monitoring_capacity_type
-      labels         = { pool = "monitoring" }
-
-      taints = [{
-        key    = "pool"
-        value  = "monitoring"
-        effect = "NO_SCHEDULE"
-      }]
-    }
-
-    # === Pool GitHub Actions (runners) ===
-    gha = {
-      instance_types = [var.gha_instance_type]
-      min_size       = var.gha_min
-      desired_size   = var.gha_desired
-      max_size       = var.gha_max
-      capacity_type  = var.gha_capacity_type
-      labels         = { pool = "gha" }
-
-      taints = [{
-        key    = "pool"
-        value  = "gha"
-        effect = "NO_SCHEDULE"
-      }]
     }
   }
 
   tags = local.tags
+}
+
+##########################################
+# EKS Access Configuration (IAM Integration)
+##########################################
+data "aws_caller_identity" "current" {}
+
+# GitHub Actions
+resource "aws_eks_access_entry" "github_actions" {
+  cluster_name  = module.eks.cluster_name
+  principal_arn = var.github_actions_role_arn
+  type          = "STANDARD"
+  tags          = local.tags
+}
+
+resource "aws_eks_access_policy_association" "github_actions_admin" {
+  cluster_name  = module.eks.cluster_name
+  principal_arn = var.github_actions_role_arn
+  policy_arn    = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
+  access_scope { type = "cluster" }
+}
+
+# Étudiants
+resource "aws_eks_access_entry" "students" {
+  for_each      = { for u in var.students_usernames : u => u }
+  cluster_name  = module.eks.cluster_name
+  principal_arn = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:user/${each.key}"
+  type          = "STANDARD"
+  tags          = local.tags
+}
+
+resource "aws_eks_access_policy_association" "students_admin" {
+  for_each      = aws_eks_access_entry.students
+  cluster_name  = module.eks.cluster_name
+  principal_arn = each.value.principal_arn
+  policy_arn    = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
+  access_scope { type = "cluster" }
 }

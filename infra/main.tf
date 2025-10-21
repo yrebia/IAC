@@ -40,15 +40,21 @@ module "network" {
 }
 
 ##########################################
-# Module Permissions (IAM & EKS Access)
+# Module Permissions (IAM & OIDC)
 ##########################################
 module "permissions" {
   source = "./permissions"
 
-  project_id   = var.project_id
-  env          = var.env
-  region       = var.region
-  cluster_name = module.eks.cluster_name
+  project_id = var.project_id
+  env        = var.env
+  region     = var.region
+
+  students = [
+    { username = "pauline", email = "pauline@epitech.eu", fullname = "Pauline Dupont" },
+    { username = "yanis", email = "yanis@epitech.eu", fullname = "Yanis Benali" },
+    { username = "aldric", email = "aldric@epitech.eu", fullname = "Aldric Martin" },
+    { username = "mathieu", email = "mathieu@epitech.eu", fullname = "Mathieu Lambert" }
+  ]
 }
 
 ##########################################
@@ -60,6 +66,12 @@ module "eks" {
   project_id   = var.project_id
   region       = var.region
   cluster_name = var.cluster_name
+  env          = var.env
+
+  # Permissions IAM
+  github_actions_role_arn     = module.permissions.github_actions_role_arn
+  students_access_key_ids     = module.permissions.students_access_key_ids
+  students_secret_access_keys = module.permissions.students_secret_access_keys
 
   # Réseau
   vpc_name       = var.vpc_name
@@ -70,9 +82,10 @@ module "eks" {
   db_subnet_az   = var.db_subnet_az
 
   # Passage explicite des IDs réseau du module network
-  vpc_id       = module.network.vpc_id
-  subnet_id    = module.network.app_subnet_id
-  db_subnet_id = module.network.db_subnet_id
+  vpc_id             = module.network.vpc_id
+  subnet_id          = module.network.app_subnet_id
+  db_subnet_id       = module.network.db_subnet_id
+  students_usernames = module.permissions.students_usernames
 }
 
 ##########################################
