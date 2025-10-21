@@ -44,7 +44,7 @@ jobs:
         run: terraform validate
 
       - name: Terraform Plan
-        run: terraform plan -var-file=${{ github.event.inputs.environment }}.tfvars
+        run: terraform plan -var-file=${{ github.event.inputs.environment }}.tfvars -var="enable_permissions=false" -var="aws_account_id=${{ secrets.AWS_ACCOUNT_ID }}"
 
       - name: Terraform Destroy
-        run: terraform destroy -var-file=${{ github.event.inputs.environment }}.tfvars -auto-approve
+        run: terraform destroy -var-file=${{ github.event.inputs.environment }}.tfvars -var="enable_permissions=false" -var="aws_account_id=${{ secrets.AWS_ACCOUNT_ID }}" -auto-approve
