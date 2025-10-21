@@ -16,7 +16,8 @@ terraform {
 # Providers AWS (désactivation des appels IAM)
 ##########################################
 provider "aws" {
-  region                      = var.region
+  region = var.region
+
   skip_metadata_api_check     = true
   skip_requesting_account_id  = true
   skip_credentials_validation = true
@@ -25,27 +26,41 @@ provider "aws" {
     tags = {
       ManagedBy = "Terraform"
       Project   = var.project_id
-      Env       = "dev"
+      Env       = var.env
     }
   }
 }
 
 provider "aws" {
-  alias                       = "eks"
-  region                      = var.region
+  alias  = "eks"
+  region = var.region
+
   skip_metadata_api_check     = true
   skip_requesting_account_id  = true
   skip_credentials_validation = true
 }
 
 ##########################################
+# Désactivation manuelle du data IAM
+##########################################
+# Patch pour éviter l'appel IAM:GetRole dans terraform-aws-modules/eks
+# → On simule un contexte vide pour contourner le data source interne
+data "aws_caller_identity" "current" {}
+
+locals {
+  fake_iam_session_context = {
+    issuer_arn = "arn:aws:sts::${data.aws_caller_identity.current.account_id}:assumed-role/GitHubActionsRole"
+    arn        = "arn:aws:sts::${data.aws_caller_identity.current.account_id}:assumed-role/GitHubActionsRole"
+    user_id    = "GitHubActions"
+  }
+}
+
+##########################################
 # Module EKS (cluster)
 ##########################################
 module "eks" {
-  source                    = "terraform-aws-modules/eks/aws"
-  version                   = "20.24.1"
-  cluster_encryption_config = {}
-
+  source  = "terraform-aws-modules/eks/aws"
+  version = "20.24.1"
 
   providers = {
     aws = aws.eks
@@ -58,6 +73,9 @@ module "eks" {
   cluster_endpoint_public_access = true
   enable_irsa                    = false
   create_kms_key                 = false
+
+  # Patch: ne pas utiliser encryption_config.provider_key_arn
+  cluster_encryption_config = {}
 
   tags = {
     Project     = var.project_id
@@ -73,71 +91,4 @@ module "eks" {
       instance_types = ["t3.medium"]
     }
   }
-}
-
-##########################################
-# EKS Access Entries + Policies
-##########################################
-# GitHub Actions
-resource "aws_eks_access_entry" "github_actions" {
-  cluster_name  = module.eks.cluster_name
-  principal_arn = var.github_actions_role_arn
-  type          = "STANDARD"
-}
-
-resource "aws_eks_access_policy_association" "github_actions_admin" {
-  cluster_name  = module.eks.cluster_name
-  principal_arn = var.github_actions_role_arn
-  policy_arn    = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
-
-  access_scope {
-    type = "cluster"
-  }
-}
-
-# Étudiants
-resource "aws_eks_access_entry" "students" {
-  for_each      = { for s in var.students : s.username => s }
-  cluster_name  = module.eks.cluster_name
-  principal_arn = "arn:aws:iam::${var.aws_account_id}:user/${each.value.username}"
-  type          = "STANDARD"
-}
-
-resource "aws_eks_access_policy_association" "students_view" {
-  for_each      = { for s in var.students : s.username => s }
-  cluster_name  = module.eks.cluster_name
-  principal_arn = "arn:aws:iam::${var.aws_account_id}:user/${each.value.username}"
-  policy_arn    = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSViewPolicy"
-
-  access_scope {
-    type = "cluster"
-  }
-}
-
-##########################################
-# Outputs
-##########################################
-output "eks_cluster_name" {
-  value = module.eks.cluster_name
-}
-
-output "eks_cluster_endpoint" {
-  value = module.eks.cluster_endpoint
-}
-
-output "app_subnet_id" {
-  value = var.subnet_id
-}
-
-output "db_subnet_id" {
-  value = var.db_subnet_id
-}
-
-output "github_actions_role_arn" {
-  value = var.github_actions_role_arn
-}
-
-output "students_access_keys" {
-  value     = null
-  sensitive = true
 }
