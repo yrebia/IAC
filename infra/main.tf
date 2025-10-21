@@ -27,6 +27,15 @@ provider "aws" {
 }
 
 ##########################################
+# Locals - Safe reference for permissions
+##########################################
+locals {
+  github_actions_role_arn = (
+    var.enable_permissions && length(module.permissions_enabled) > 0
+  ) ? module.permissions_enabled[0].github_actions_role_arn : null
+}
+
+##########################################
 # Module Network
 ##########################################
 module "network" {
@@ -146,5 +155,26 @@ resource "helm_release" "task_manager" {
   depends_on = [
     kubernetes_secret.db,
     module.eks
+  ]
+}
+
+##########################################
+# Module Permissions (facultatif)
+##########################################
+module "permissions_enabled" {
+  source = "./permissions"
+
+  count = var.enable_permissions ? 1 : 0
+
+  project_id     = var.project_id
+  env            = var.env
+  region         = var.region
+  aws_account_id = var.aws_account_id
+
+  students = [
+    { username = "student1" },
+    { username = "student2" },
+    { username = "student3" },
+    { username = "student4" }
   ]
 }
