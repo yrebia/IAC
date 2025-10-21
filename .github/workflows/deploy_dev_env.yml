@@ -49,19 +49,19 @@ jobs:
       - name: Terraform Plan (dev)
         id: plan
         run: |
-          set -e
           terraform plan \
-            -var-file="dev.tfvars" \
-            -var="aws_account_id=${{ secrets.AWS_ACCOUNT_ID }}" \
-            -no-color -input=false -detailed-exitcode
-
+          -var-file="dev.tfvars" \
+          -var="aws_account_id=${{ secrets.AWS_ACCOUNT_ID }}" \
+          -var="enable_permissions=false" \
+          -no-color -input=false -detailed-exitcode
+          
       - name: Terraform Apply (dev)
         run: |
-          set -e
           terraform apply \
-            -var-file="dev.tfvars" \
-            -var="aws_account_id=${{ secrets.AWS_ACCOUNT_ID }}" \
-            -auto-approve -lock-timeout=5m -no-color
+          -var-file="dev.tfvars" \
+          -var="aws_account_id=${{ secrets.AWS_ACCOUNT_ID }}" \
+          -var="enable_permissions=false" \
+          -auto-approve -lock-timeout=5m -no-color
 
       - name: Show Outputs
         run: terraform output -json | jq
