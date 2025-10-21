@@ -47,11 +47,9 @@ jobs:
         run: terraform validate -no-color
 
       - name: Terraform Plan (dev)
-        run: terraform plan -var-file="dev.tfvars" -var="aws_account_id=${{ secrets.AWS_ACCOUNT_ID }}" -no-color -input=false -detailed-exitcode
-
-      - name: Terraform Plan (dev)
         run: |
-        terraform plan -var-file="dev.tfvars" -var="aws_account_id=${{ secrets.AWS_ACCOUNT_ID }}" -no-color -input=false -detailed-exitcode || true
+          terraform plan -var-file="dev.tfvars" -var="aws_account_id=${{ secrets.AWS_ACCOUNT_ID }}" -no-color -input=false -detailed-exitcode || true
+
 
 
       - name: Show Outputs
