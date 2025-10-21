@@ -45,9 +45,9 @@ module "network" {
 module "permissions" {
   source = "./permissions"
 
-  project_id = var.project_id
-  env        = var.env
-  region     = var.region
+  project_id     = var.project_id
+  env            = var.env
+  region         = var.region
   aws_account_id = var.aws_account_id
 
   students = [
