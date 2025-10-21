@@ -1,35 +1,9 @@
-terraform {
-  required_version = ">= 1.6.0"
-
-  required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = "~> 5.0"
-    }
-    kubernetes = {
-      source  = "hashicorp/kubernetes"
-      version = "~> 2.29"
-    }
-    helm = {
-      source  = "hashicorp/helm"
-      version = "~> 2.12"
-    }
-  }
-
-  # injecté en CI via -backend-config
-  backend "s3" {}
-}
-
-provider "aws" {
-  region = var.region
-}
-
 data "aws_eks_cluster" "this" {
-  name = var.cluster_name
+  name = module.eks.cluster_name
 }
 
 data "aws_eks_cluster_auth" "this" {
-  name = var.cluster_name
+  name = module.eks.cluster_name
 }
 
 provider "kubernetes" {

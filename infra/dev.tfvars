@@ -1,6 +1,7 @@
 project_id   = "team1-dev"
 region       = "eu-west-3"
-cluster_name = "tmgr-eks3"
+cluster_name = "tmgr-eks"
+env          = "dev"
 
 vpc_name       = "team1-dev-vpc"
 cidr_block     = "10.0.0.0/16"
@@ -16,3 +17,11 @@ db_instance_class    = "db.t3.micro"
 db_allocated_storage = 20
 db_name              = "appdbdev"
 db_username          = "dev"
+vpc_id               = "vpc-021490dfd686bd62e"
+
+students = [
+  { username = "pauline" },
+  { username = "yanis" },
+  { username = "aldric" },
+  { username = "mathieu" }
+]
