@@ -91,11 +91,19 @@ module "database" {
 }
 
 ##########################################
-# Namespace Kubernetes
+# Namespaces Kubernetes
 ##########################################
 resource "kubernetes_namespace" "app" {
   metadata {
     name = "app"
+  }
+
+  depends_on = [module.eks]
+}
+
+resource "kubernetes_namespace" "monitoring" {
+  metadata {
+    name = "monitoring"
   }
 
   depends_on = [module.eks]
@@ -136,8 +144,91 @@ resource "kubernetes_secret" "db" {
 }
 
 ##########################################
-# Helm Release (Chart Task Manager)
+# Helm Releases
 ##########################################
+
+# kube-prometheus-stack pour Prometheus + Grafana
+resource "helm_release" "kube_prometheus_stack" {
+  name       = "kube-prometheus-stack"
+  repository = "https://prometheus-community.github.io/helm-charts"
+  chart      = "kube-prometheus-stack"
+  version    = "~> 58.0"
+  namespace  = kubernetes_namespace.monitoring.metadata[0].name
+
+  values = [
+    <<-EOT
+    alertmanager:
+      enabled: true
+    
+    grafana:
+      enabled: true
+      adminPassword: "admin"
+      service:
+        type: ClusterIP
+      ingress:
+        enabled: true
+        ingressClassName: alb
+        annotations:
+          alb.ingress.kubernetes.io/scheme: internet-facing
+          alb.ingress.kubernetes.io/target-type: ip
+          alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443}]'
+        hosts:
+          - grafana.taskmgr.example.com
+        path: /
+    
+    prometheus:
+      enabled: true
+      prometheusSpec:
+        serviceMonitorSelectorNilUsesHelmValues: false
+        serviceMonitorSelector: {}
+        podMonitorSelectorNilUsesHelmValues: false
+        podMonitorSelector: {}
+        retention: 30d
+        storageSpec:
+          volumeClaimTemplate:
+            spec:
+              storageClassName: gp2
+              accessModes: ["ReadWriteOnce"]
+              resources:
+                requests:
+                  storage: 10Gi
+      
+      service:
+        type: ClusterIP
+        
+      ingress:
+        enabled: true
+        ingressClassName: alb
+        annotations:
+          alb.ingress.kubernetes.io/scheme: internet-facing
+          alb.ingress.kubernetes.io/target-type: ip
+          alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443}]'
+        hosts:
+          - prometheus.taskmgr.example.com
+        paths:
+          - /
+    
+    nodeExporter:
+      enabled: true
+    
+    kubeStateMetrics:
+      enabled: true
+    EOT
+  ]
+
+  wait            = true
+  timeout         = 600
+  force_update    = true
+  atomic          = true
+  cleanup_on_fail = true
+
+  depends_on = [
+    kubernetes_namespace.monitoring,
+    module.eks
+  ]
+}
+
+# Chart Task Manager
 resource "helm_release" "task_manager" {
   name             = "task-manager"
   namespace        = kubernetes_namespace.app.metadata[0].name
@@ -155,6 +246,64 @@ resource "helm_release" "task_manager" {
   depends_on = [
     kubernetes_secret.db,
     module.eks
+  ]
+}
+
+##########################################
+# ServiceMonitor pour scraper l'app
+##########################################
+resource "kubernetes_manifest" "task_manager_servicemonitor" {
+  manifest = {
+    apiVersion = "monitoring.coreos.com/v1"
+    kind       = "ServiceMonitor"
+    metadata = {
+      name      = "task-manager-metrics"
+      namespace = kubernetes_namespace.monitoring.metadata[0].name
+      labels = {
+        app = "task-manager"
+      }
+    }
+    spec = {
+      namespaceSelector = {
+        matchNames = [kubernetes_namespace.app.metadata[0].name]
+      }
+      selector = {
+        matchLabels = {
+          "app.kubernetes.io/name" = "task-manager"
+        }
+      }
+      endpoints = [{
+        port     = "http"
+        path     = "/metrics"
+        interval = "30s"
+      }]
+    }
+  }
+
+  depends_on = [
+    helm_release.kube_prometheus_stack,
+    helm_release.task_manager
+  ]
+}
+
+##########################################
+# Dashboard Grafana pour Task Manager
+##########################################
+resource "kubernetes_config_map" "grafana_dashboard" {
+  metadata {
+    name      = "task-manager-dashboard"
+    namespace = kubernetes_namespace.monitoring.metadata[0].name
+    labels = {
+      grafana_dashboard = "1"
+    }
+  }
+
+  data = {
+    "task-manager-dashboard.json" = file("${path.module}/../monitoring/dashboards/task-manager-dashboard.json")
+  }
+
+  depends_on = [
+    helm_release.kube_prometheus_stack
   ]
 }
 
