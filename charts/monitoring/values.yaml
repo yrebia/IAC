@@ -1,0 +1,20 @@
+kubePrometheus:
+  enabled: true
+
+kubePrometheusStack:
+  grafana:
+    adminPassword: "admin"
+    ingress:
+      enabled: true
+      ingressClassName: alb
+      hosts:
+        - grafana.taskmgr.example.com
+  prometheus:
+    enabled: true
+    retention: 30d
+    storage: 10Gi
+
+dashboards:
+  taskManager:
+    enabled: true
+    configMapName: task-manager-dashboard

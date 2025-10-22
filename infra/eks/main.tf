@@ -107,21 +107,7 @@ module "eks" {
       }
     }
 
-    monitoring = {
-      desired_size   = 1
-      min_size       = 0
-      max_size       = 1
-      instance_types = ["t3.micro"]
-      capacity_type  = "ON_DEMAND"
-
-      labels = {
-        role = "monitoring"
-      }
-
-      tags = {
-        Name = "monitoring-nodegroup"
-      }
-    }
+    # monitoring node group removed: monitoring is handled by the charts/monitoring Helm chart
 
     gha = {
       desired_size   = 1

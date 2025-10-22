@@ -15,6 +15,7 @@ jobs:
   terraform-dev:
     runs-on: ubuntu-latest
     environment: dev
+
     permissions:
       id-token: write
       contents: read
@@ -24,19 +25,24 @@ jobs:
         working-directory: infra
 
     steps:
-      - uses: actions/checkout@v4
+      # 🧩 1. Checkout du code
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - name: Configure AWS credentials (OIDC)
+      # 🧩 2. Auth AWS via OIDC (GitHub Identity Federation)
+      - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/GitHubActionsRole
           aws-region: eu-west-3
 
+      # 🧩 3. Setup Terraform
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.13.3
 
+      # 🧩 4. Validation du code Terraform
       - name: Terraform Format Check
         run: terraform fmt -check -recursive
 
@@ -46,13 +52,53 @@ jobs:
       - name: Terraform Validate
         run: terraform validate -no-color
 
+      # 🧩 5. Terraform Plan (pour revue)
       - name: Terraform Plan (dev)
         id: plan
-        continue-on-error: true
-        run: terraform plan -var-file="dev.tfvars" -var="enable_permissions=false" -var="aws_account_id=${{ secrets.AWS_ACCOUNT_ID }}" -no-color
-
-      - name: Terraform Apply (with retry on state lock)
         run: |
+          set -euo pipefail
+          terraform plan \
+            -var-file="dev.tfvars" \
+            -var="enable_permissions=false" \
+            -var="aws_account_id=${{ secrets.AWS_ACCOUNT_ID }}" \
+            -no-color
+
+      # 🧩 6. Apply - Étape 1 : réseau + DB + EKS
+      - name: Terraform Apply (network + EKS + DB)
+        run: |
+          set -euo pipefail
+          terraform apply \
+            -target=module.network \
+            -target=module.database \
+            -target=module.eks \
+            -var-file="dev.tfvars" \
+            -var="enable_permissions=false" \
+            -var="aws_account_id=${{ secrets.AWS_ACCOUNT_ID }}" \
+            -auto-approve -no-color
+
+      # 🧩 7. Attendre que le cluster EKS devienne actif
+      - name: Wait for EKS cluster to become ACTIVE
+        run: |
+          set -euo pipefail
+          echo "⏳ Waiting for EKS cluster to be ACTIVE..."
+          for i in {1..20}; do
+            STATUS=$(aws eks describe-cluster --name tmgr-eks --region eu-west-3 --query "cluster.status" --output text 2>/dev/null || echo "MISSING")
+            echo "Cluster status: $STATUS"
+            if [ "$STATUS" = "ACTIVE" ]; then
+              echo "✅ Cluster is ACTIVE!"
+              break
+            fi
+            sleep 15
+          done
+          if [ "$STATUS" != "ACTIVE" ]; then
+            echo "❌ Cluster not active after waiting period"
+            exit 1
+          fi
+
+      # 🧩 8. Apply - Étape 2 : Helm, namespaces, manifests, etc.
+      - name: Terraform Apply (remaining modules)
+        run: |
+          set -euo pipefail
           for i in {1..3}; do
             echo "🚀 Running Terraform apply (attempt $i)..."
             terraform apply \
@@ -71,5 +117,17 @@ jobs:
             fi
           done
 
-      - name: Show Outputs
-        run: terraform output -json | jq
+      # 🧩 9. Vérification de la connectivité cluster
+      - name: Verify EKS connection
+        run: |
+          set -euo pipefail
+          echo "🔍 Checking Kubernetes connectivity..."
+          aws eks update-kubeconfig --name tmgr-eks --region eu-west-3
+          kubectl get nodes -o wide
+          kubectl get ns
+
+      # 🧩 10. Outputs Terraform lisibles
+      - name: Show Terraform Outputs
+        run: |
+          set -euo pipefail
+          terraform output -json | jq .

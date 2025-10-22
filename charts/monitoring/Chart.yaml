@@ -1,0 +1,8 @@
+apiVersion: v2
+name: monitoring
+description: A Helm chart to deploy kube-prometheus-stack (Prometheus + Grafana) and dashboards
+
+type: application
+
+version: 0.1.0
+appVersion: "0.1.0"

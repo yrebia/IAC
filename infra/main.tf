@@ -71,6 +71,14 @@ module "eks" {
 }
 
 ##########################################
+# Attente que le cluster EKS soit prêt
+##########################################
+resource "time_sleep" "wait_for_eks" {
+  depends_on      = [module.eks]
+  create_duration = "180s"
+}
+
+##########################################
 # Module Database (RDS)
 ##########################################
 module "database" {
@@ -97,16 +105,14 @@ resource "kubernetes_namespace" "app" {
   metadata {
     name = "app"
   }
-
-  depends_on = [module.eks]
+  depends_on = [time_sleep.wait_for_eks]
 }
 
 resource "kubernetes_namespace" "monitoring" {
   metadata {
     name = "monitoring"
   }
-
-  depends_on = [module.eks]
+  depends_on = [time_sleep.wait_for_eks]
 }
 
 ##########################################
@@ -139,7 +145,8 @@ resource "kubernetes_secret" "db" {
 
   depends_on = [
     kubernetes_namespace.app,
-    module.database
+    module.database,
+    time_sleep.wait_for_eks
   ]
 }
 
@@ -147,74 +154,13 @@ resource "kubernetes_secret" "db" {
 # Helm Releases
 ##########################################
 
-# kube-prometheus-stack pour Prometheus + Grafana
-resource "helm_release" "kube_prometheus_stack" {
-  name       = "kube-prometheus-stack"
-  repository = "https://prometheus-community.github.io/helm-charts"
-  chart      = "kube-prometheus-stack"
-  version    = "~> 58.0"
-  namespace  = kubernetes_namespace.monitoring.metadata[0].name
+# Déploiement du chart de monitoring
+resource "helm_release" "monitoring" {
+  name      = "monitoring"
+  chart     = "${path.module}/../charts/monitoring"
+  namespace = kubernetes_namespace.monitoring.metadata[0].name
 
-  values = [
-    <<-EOT
-    alertmanager:
-      enabled: true
-    
-    grafana:
-      enabled: true
-      adminPassword: "admin"
-      service:
-        type: ClusterIP
-      ingress:
-        enabled: true
-        ingressClassName: alb
-        annotations:
-          alb.ingress.kubernetes.io/scheme: internet-facing
-          alb.ingress.kubernetes.io/target-type: ip
-          alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443}]'
-        hosts:
-          - grafana.taskmgr.example.com
-        path: /
-    
-    prometheus:
-      enabled: true
-      prometheusSpec:
-        serviceMonitorSelectorNilUsesHelmValues: false
-        serviceMonitorSelector: {}
-        podMonitorSelectorNilUsesHelmValues: false
-        podMonitorSelector: {}
-        retention: 30d
-        storageSpec:
-          volumeClaimTemplate:
-            spec:
-              storageClassName: gp2
-              accessModes: ["ReadWriteOnce"]
-              resources:
-                requests:
-                  storage: 10Gi
-      
-      service:
-        type: ClusterIP
-        
-      ingress:
-        enabled: true
-        ingressClassName: alb
-        annotations:
-          alb.ingress.kubernetes.io/scheme: internet-facing
-          alb.ingress.kubernetes.io/target-type: ip
-          alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443}]'
-        hosts:
-          - prometheus.taskmgr.example.com
-        paths:
-          - /
-    
-    nodeExporter:
-      enabled: true
-    
-    kubeStateMetrics:
-      enabled: true
-    EOT
-  ]
+  values = [file("${path.module}/../charts/monitoring/values.yaml")]
 
   wait            = true
   timeout         = 600
@@ -223,12 +169,13 @@ resource "helm_release" "kube_prometheus_stack" {
   cleanup_on_fail = true
 
   depends_on = [
+    module.eks,
     kubernetes_namespace.monitoring,
-    module.eks
+    time_sleep.wait_for_eks
   ]
 }
 
-# Chart Task Manager
+# Déploiement du chart Task Manager
 resource "helm_release" "task_manager" {
   name             = "task-manager"
   namespace        = kubernetes_namespace.app.metadata[0].name
@@ -244,8 +191,9 @@ resource "helm_release" "task_manager" {
   cleanup_on_fail = true
 
   depends_on = [
+    module.eks,
     kubernetes_secret.db,
-    module.eks
+    time_sleep.wait_for_eks
   ]
 }
 
@@ -281,31 +229,17 @@ resource "kubernetes_manifest" "task_manager_servicemonitor" {
   }
 
   depends_on = [
-    helm_release.kube_prometheus_stack,
-    helm_release.task_manager
+    module.eks,
+    helm_release.monitoring,
+    helm_release.task_manager,
+    time_sleep.wait_for_eks
   ]
 }
 
 ##########################################
 # Dashboard Grafana pour Task Manager
 ##########################################
-resource "kubernetes_config_map" "grafana_dashboard" {
-  metadata {
-    name      = "task-manager-dashboard"
-    namespace = kubernetes_namespace.monitoring.metadata[0].name
-    labels = {
-      grafana_dashboard = "1"
-    }
-  }
-
-  data = {
-    "task-manager-dashboard.json" = file("${path.module}/../monitoring/dashboards/task-manager-dashboard.json")
-  }
-
-  depends_on = [
-    helm_release.kube_prometheus_stack
-  ]
-}
+/* Dashboard inclus dans le chart Helm "monitoring" */
 
 ##########################################
 # Module Permissions (facultatif)
