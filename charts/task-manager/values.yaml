@@ -1,8 +1,8 @@
 replicaCount: 1
 
 image:
-  repository: nginxinc/nginx-unprivileged
-  tag: "stable-alpine"
+  repository: aldricjourdain/task-manager-app
+  tag: "latest"
   pullPolicy: IfNotPresent
 
 service:
@@ -18,7 +18,6 @@ ingress:
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/target-type: ip
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443}]'
-
 
 nodeSelector:
   workload: app
@@ -44,7 +43,7 @@ topologySpreadConstraints:
 
 resources:
   requests: { cpu: 100m, memory: 128Mi }
-  limits:   { cpu: 200m, memory: 256Mi }
+  limits: { cpu: 200m, memory: 256Mi }
 
 serviceAccount:
   create: true
@@ -63,7 +62,6 @@ networkPolicy:
     enabled: true
     cidrs:
       - "10.0.2.0/24"
- 
 
 quota:
   enabled: true
@@ -96,7 +94,7 @@ containerSecurityContext:
 db:
   enabled: true
   secretName: task-manager-db
-  useDatabaseUrl: true          # si app lit DATABASE_URL; sinon false
+  useDatabaseUrl: true # si app lit DATABASE_URL; sinon false
 
 hpa:
   enabled: false

@@ -1,0 +1,43 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Environnement
+.env
+.env.local
+.env.*.local
+
+# Tests
+.pytest_cache/
+.coverage
+htmlcov/
+*.cover
+
+# Documentation
+README.md
+*.md
+
+# Git
+.git/
+.gitignore
+
+# Certificats (peuvent être montés en volume ou gérés autrement)
+certs/
+
+# OS
+.DS_Store
+Thumbs.db
