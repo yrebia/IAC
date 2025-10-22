@@ -61,7 +61,15 @@ jobs:
             -var-file="dev.tfvars" \
             -var="enable_permissions=false" \
             -var="aws_account_id=${{ secrets.AWS_ACCOUNT_ID }}" \
-            -no-color
+            -no-color || exit_code=$?
+
+          # Terraform renvoie 2 quand il y a des changements → on l'autorise
+          if [ "${exit_code:-0}" -gt 1 ]; then
+            echo "❌ Terraform plan failed with code $exit_code"
+            exit $exit_code
+          else
+            echo "✅ Terraform plan completed successfully (exit $exit_code)"
+          fi
 
       # 🧩 6. Apply - Étape 1 : réseau + DB + EKS
       - name: Terraform Apply (network + EKS + DB)
