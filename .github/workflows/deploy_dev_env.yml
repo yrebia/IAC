@@ -64,9 +64,11 @@ jobs:
             -no-color || exit_code=$?
 
           # Terraform renvoie 2 quand il y a des changements → on l'autorise
-          if [ "${exit_code:-0}" -gt 1 ]; then
+          if [ "${exit_code:-0}" -gt 2 ]; then
             echo "❌ Terraform plan failed with code $exit_code"
             exit $exit_code
+          elif [ "${exit_code:-0}" -eq 2 ]; then
+            echo "ℹ️ Terraform plan detected infrastructure changes (exit 2) — continuing to apply."
           else
             echo "✅ Terraform plan completed successfully (exit $exit_code)"
           fi
@@ -75,14 +77,26 @@ jobs:
       - name: Terraform Apply (network + EKS + DB)
         run: |
           set -euo pipefail
-          terraform apply \
-            -target=module.network \
-            -target=module.database \
-            -target=module.eks \
-            -var-file="dev.tfvars" \
-            -var="enable_permissions=false" \
-            -var="aws_account_id=${{ secrets.AWS_ACCOUNT_ID }}" \
-            -auto-approve -no-color
+          for i in {1..3}; do
+            echo "🚀 Running Terraform apply for core infrastructure (attempt $i)..."
+            terraform apply \
+              -target=module.network \
+              -target=module.database \
+              -target=module.eks \
+              -var-file="dev.tfvars" \
+              -var="enable_permissions=false" \
+              -var="aws_account_id=${{ secrets.AWS_ACCOUNT_ID }}" \
+              -auto-approve -no-color | tee terraform.log && break
+
+            status=$?
+            if grep -q "Error acquiring the state lock" terraform.log; then
+              echo "🔒 State lock detected, retrying in 30s..."
+              sleep 30
+            else
+              echo "❌ Terraform apply failed (code $status)"
+              exit $status
+            fi
+          done
 
       # 🧩 7. Attendre que le cluster EKS devienne actif
       - name: Wait for EKS cluster to become ACTIVE
@@ -108,7 +122,7 @@ jobs:
         run: |
           set -euo pipefail
           for i in {1..3}; do
-            echo "🚀 Running Terraform apply (attempt $i)..."
+            echo "🚀 Running Terraform apply (remaining modules, attempt $i)..."
             terraform apply \
               -var-file="dev.tfvars" \
               -var="enable_permissions=false" \
