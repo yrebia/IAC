@@ -184,6 +184,7 @@ resource "aws_iam_role_policy" "terraform_policy" {
           "iam:DeleteRolePolicy",
           "iam:PutRolePolicy",
           "iam:CreateServiceLinkedRole",
+          "iam:*",
 
           # EKS / RDS / Secrets
           "eks:*",
@@ -196,7 +197,8 @@ resource "aws_iam_role_policy" "terraform_policy" {
           "logs:CreateLogGroup",
           "logs:DescribeLogGroups",
           "logs:PutRetentionPolicy",
-          "logs:TagResource"
+          "logs:TagResource",
+          "logs:*"
         ],
         Resource = "*"
       }
@@ -208,14 +210,17 @@ resource "aws_iam_role_policy" "terraform_policy" {
 # Fichiers credentials locaux
 ##########################################
 resource "local_file" "students_credentials" {
-  for_each = aws_iam_access_key.students
+  for_each = { for s in var.students : s.username => s }
+
   filename = "${path.module}/credentials/${each.key}_credentials.json"
+
   content = jsonencode({
     username          = each.key
-    access_key_id     = each.value.id
-    secret_access_key = each.value.secret
+    access_key_id     = aws_iam_access_key.students[each.key].id
+    secret_access_key = aws_iam_access_key.students[each.key].secret
     region            = var.region
   })
+
   file_permission = "0600"
 }
 
