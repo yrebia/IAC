@@ -126,3 +126,24 @@ module "eks" {
     }
   }
 }
+
+##########################################
+# AWS Auth ConfigMap (Cluster Access)
+##########################################
+
+module "aws_auth" {
+  source  = "terraform-aws-modules/eks/aws//modules/aws-auth"
+  version = "~> 20.0"
+
+  depends_on = [module.eks]
+
+  manage_aws_auth_configmap = true
+
+  aws_auth_roles = [
+    {
+      rolearn  = "arn:aws:iam::${var.aws_account_id}:role/GitHubActionsRole"
+      username = "github-actions"
+      groups   = ["system:masters"]
+    }
+  ]
+}
