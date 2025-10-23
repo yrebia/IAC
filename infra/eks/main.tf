@@ -43,8 +43,6 @@ provider "aws" {
 ##########################################
 # Désactivation manuelle du data IAM
 ##########################################
-# Patch pour éviter l'appel IAM:GetRole dans terraform-aws-modules/eks
-# → On simule un contexte vide pour contourner le data source interne
 data "aws_caller_identity" "current" {}
 
 locals {
@@ -55,12 +53,22 @@ locals {
   }
 }
 
+resource "aws_cloudwatch_log_group" "eks_cluster_logs" {
+  name              = "/aws/eks/tmgr-eks/cluster"
+  retention_in_days = 30
+
+  lifecycle {
+    ignore_changes = all
+  }
+}
+
 ##########################################
 # Module EKS (cluster)
 ##########################################
 module "eks" {
   source  = "terraform-aws-modules/eks/aws"
   version = "20.24.1"
+  depends_on = [aws_cloudwatch_log_group.eks_cluster_logs]
 
   providers = {
     aws = aws.eks
