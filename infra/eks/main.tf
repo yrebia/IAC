@@ -58,7 +58,9 @@ resource "aws_cloudwatch_log_group" "eks_cluster_logs" {
   retention_in_days = 30
 
   lifecycle {
-    ignore_changes = all
+    prevent_destroy       = true
+    create_before_destroy = false
+    ignore_changes        = all
   }
 }
 
