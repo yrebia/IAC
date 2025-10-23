@@ -66,8 +66,8 @@ resource "aws_cloudwatch_log_group" "eks_cluster_logs" {
 # Module EKS (cluster)
 ##########################################
 module "eks" {
-  source  = "terraform-aws-modules/eks/aws"
-  version = "20.24.1"
+  source     = "terraform-aws-modules/eks/aws"
+  version    = "20.24.1"
   depends_on = [aws_cloudwatch_log_group.eks_cluster_logs]
 
   providers = {
