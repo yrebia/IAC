@@ -63,12 +63,10 @@ jobs:
             -var="aws_account_id=${{ secrets.AWS_ACCOUNT_ID }}" \
             -no-color || exit_code=$?
 
-          # Terraform renvoie 2 quand il y a des changements → on l'autorise
-          if [ "${exit_code:-0}" -gt 2 ]; then
+          # Terraform renvoie 2 quand il y a des changements → on l’autorise
+          if [ "${exit_code:-0}" -gt 1 ]; then
             echo "❌ Terraform plan failed with code $exit_code"
             exit $exit_code
-          elif [ "${exit_code:-0}" -eq 2 ]; then
-            echo "ℹ️ Terraform plan detected infrastructure changes (exit 2) — continuing to apply."
           else
             echo "✅ Terraform plan completed successfully (exit $exit_code)"
           fi
@@ -77,52 +75,46 @@ jobs:
       - name: Terraform Apply (network + EKS + DB)
         run: |
           set -euo pipefail
-          for i in {1..3}; do
-            echo "🚀 Running Terraform apply for core infrastructure (attempt $i)..."
-            terraform apply \
-              -target=module.network \
-              -target=module.database \
-              -target=module.eks \
-              -var-file="dev.tfvars" \
-              -var="enable_permissions=false" \
-              -var="aws_account_id=${{ secrets.AWS_ACCOUNT_ID }}" \
-              -auto-approve -no-color | tee terraform.log && break
-
-            status=$?
-            if grep -q "Error acquiring the state lock" terraform.log; then
-              echo "🔒 State lock detected, retrying in 30s..."
-              sleep 30
-            else
-              echo "❌ Terraform apply failed (code $status)"
-              exit $status
-            fi
-          done
+          terraform apply \
+            -target=module.network \
+            -target=module.database \
+            -target=module.eks \
+            -var-file="dev.tfvars" \
+            -var="enable_permissions=false" \
+            -var="aws_account_id=${{ secrets.AWS_ACCOUNT_ID }}" \
+            -auto-approve -no-color
 
       # 🧩 7. Attendre que le cluster EKS devienne actif
       - name: Wait for EKS cluster to become ACTIVE
         run: |
           set -euo pipefail
           echo "⏳ Waiting for EKS cluster to be ACTIVE..."
-          for i in {1..20}; do
+          for i in {1..40}; do
             STATUS=$(aws eks describe-cluster --name tmgr-eks --region eu-west-3 --query "cluster.status" --output text 2>/dev/null || echo "MISSING")
             echo "Cluster status: $STATUS"
             if [ "$STATUS" = "ACTIVE" ]; then
               echo "✅ Cluster is ACTIVE!"
               break
             fi
-            sleep 15
+            sleep 30
           done
           if [ "$STATUS" != "ACTIVE" ]; then
             echo "❌ Cluster not active after waiting period"
             exit 1
           fi
 
+      # 🧩 7.5. Pause de stabilisation (API + nodes)
+      - name: Sleep for cluster stabilization
+        run: |
+          echo "⏳ Waiting 2 more minutes for API and nodes to be ready..."
+          sleep 120
+
       # 🧩 8. Apply - Étape 2 : Helm, namespaces, manifests, etc.
       - name: Terraform Apply (remaining modules)
         run: |
           set -euo pipefail
           for i in {1..3}; do
-            echo "🚀 Running Terraform apply (remaining modules, attempt $i)..."
+            echo "🚀 Running Terraform apply (attempt $i)..."
             terraform apply \
               -var-file="dev.tfvars" \
               -var="enable_permissions=false" \
