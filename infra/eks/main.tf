@@ -57,17 +57,14 @@ locals {
 data "aws_cloudwatch_log_group" "existing" {
   name = "/aws/eks/tmgr-eks/cluster"
 
-  lifecycle {
-    postcondition {
-      condition     = true
-      error_message = ""
-    }
-  }
+  # Ignore les erreurs si le log group n'existe pas encore
+  depends_on = []
+  # Pas besoin de postcondition ici
 }
 
 # Crée le log group uniquement s'il n'existe pas
 resource "aws_cloudwatch_log_group" "eks_cluster_logs" {
-  count             = try(length(data.aws_cloudwatch_log_group.existing.arn), 0) == 0 ? 1 : 0
+  count             = try(data.aws_cloudwatch_log_group.existing.arn, null) == null ? 1 : 0
   name              = "/aws/eks/tmgr-eks/cluster"
   retention_in_days = 30
 
