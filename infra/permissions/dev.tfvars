@@ -1,9 +1,9 @@
-project_id = "student-team1-dev"
+project_id = "student-team14-dev"
 env        = "dev"
-region     = "eu-west-3"
+region     = "eu-west-2"
 students = [
   { username = "yanis" },
   { username = "pauline" },
   { username = "aldric" },
-  { username = "mathieu" }
+  { username = "mathieu" },
 ]

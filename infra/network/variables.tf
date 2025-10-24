@@ -1,25 +1,42 @@
 variable "vpc_name" {
   type        = string
-  description = "Nom du VPC existant"
+  description = "Name of the VPC"
 }
 
 variable "cidr_block" {
   type        = string
-  description = "CIDR du VPC"
+  description = "CIDR block for the VPC"
+  validation {
+    condition     = can(cidrhost(var.cidr_block, 0))
+    error_message = "The cidr_block must be a valid IPv4 CIDR block."
+  }
 }
 
-variable "subnet_cidr" {
+variable "subnet_cidr_block" {
   type        = string
-  description = "CIDR du subnet applicatif"
+  description = "CIDR block for the subnet"
+  validation {
+    condition     = can(cidrhost(var.subnet_cidr_block, 0))
+    error_message = "The subnet_cidr_block must be a valid IPv4 CIDR block."
+  }
 }
 
-variable "db_subnet_cidr" {
+variable "env" {
   type        = string
-  description = "CIDR du subnet base de données"
+  description = "Environment name (dev, staging, prod)"
+  validation {
+    condition     = contains(["dev", "staging", "prod"], var.env)
+    error_message = "Environment must be one of: dev, staging, prod."
+  }
 }
 
-variable "vpc_id" {
+variable "project_id" {
   type        = string
-  description = "VPC ID (si défini, le lookup est ignoré)"
-  default     = ""
+  description = "ID of the project"
+}
+
+variable "map_public_ip_on_launch" {
+  type        = bool
+  description = "Specify true to indicate that instances launched into the subnet should be assigned a public IP address"
+  default     = true
 }

@@ -28,7 +28,7 @@ variable "cidr_block" {
   description = "VPC CIDR block"
 }
 
-variable "subnet_cidr" {
+variable "subnet_cidr_block" {
   type        = string
   description = "Application subnet CIDR"
 }

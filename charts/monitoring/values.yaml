@@ -1,20 +1,154 @@
-kubePrometheus:
+# === CloudOps Monitoring Stack ===
+# Unified monitoring setup (Prometheus + Grafana + Loki)
+# Adapted for MyTeam Dev environment
+
+persistence:
+  defaultStorageClass: "gp3"
+
+# ── Prometheus Operator Stack ───────────────────────────────
+prometheus-stack:
   enabled: true
 
-kubePrometheusStack:
-  grafana:
-    adminPassword: "admin"
-    ingress:
-      enabled: true
-      ingressClassName: alb
-      hosts:
-        - grafana.taskmgr.example.com
   prometheus:
     enabled: true
-    retention: 30d
-    storage: 10Gi
+    spec:
+      retention: "14d"
+      retention_size: "50GiB"
+      resources:
+        requests:
+          cpu: "600m"
+          memory: "2Gi"
+        limits:
+          cpu: "2"
+          memory: "8Gi"
+      storageSpec:
+        volumeClaimTemplate:
+          spec:
+            accessModes: ["ReadWriteOnce"]
+            storageClassName: gp3
+            resources:
+              requests:
+                storage: 100Gi
+      additionalScrapeConfigs:
+        - job_name: "task-manager"
+          kubernetes_sd_configs:
+            - role: endpoints
+              namespaces:
+                names: ["default"]
+          relabel_configs:
+            - source_labels: [__meta_kubernetes_service_name]
+              regex: "task-manager"
+              action: keep
+        - job_name: "ci-runners"
+          kubernetes_sd_configs:
+            - role: pod
+              namespaces:
+                names: ["ci"]
+          relabel_configs:
+            - source_labels: [__meta_kubernetes_pod_label_role]
+              regex: "github-runner"
+              action: keep
 
-dashboards:
-  taskManager:
+  grafana:
     enabled: true
-    configMapName: task-manager-dashboard
+    admin:
+      password: "admin"
+    persistence:
+      enabled: true
+      size: 10Gi
+      storageClassName: gp3
+    resources:
+      requests:
+        cpu: 200m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 1Gi
+    ingress:
+      enabled: true
+      className: alb
+      annotations:
+        alb.ingress.kubernetes.io/scheme: internet-facing
+        alb.ingress.kubernetes.io/target-type: ip
+      hosts:
+        - grafana.myteam-dev.local
+      tls:
+        - secretName: grafana-cert
+          hosts:
+            - grafana.myteam-dev.local
+    config:
+      security:
+        allow_embedding: true
+      server:
+        root_url: "https://grafana.myteam-dev.local"
+
+  alertmanager:
+    enabled: true
+    config:
+      global:
+        smtp_from: "alerts@myteam.cloud"
+      route:
+        receiver: "default"
+        repeat_interval: 2h
+      receivers:
+        - name: "default"
+          webhook_configs:
+            - url: "http://hooks.slack.com/services/..."
+              send_resolved: true
+    storage:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: gp3
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 10Gi
+
+# ── Loki & Promtail ────────────────────────────────────────
+loki-stack:
+  enabled: true
+  loki:
+    persistence:
+      enabled: true
+      storageClassName: gp3
+      size: 40Gi
+    limits_config:
+      retention_period: 168h
+  promtail:
+    enabled: true
+    config:
+      clients:
+        - url: http://loki:3100/loki/api/v1/push
+
+# ── Custom Dashboards ──────────────────────────────────────
+grafanaDashboards:
+  default:
+    kubernetes:
+      gnetId: 7249
+      revision: 1
+      datasource: Prometheus
+    fastapi:
+      gnetId: 14031
+      revision: 1
+      datasource: Prometheus
+
+# ── Custom Alerts ──────────────────────────────────────────
+alertRules:
+  enabled: true
+  rules:
+    - alert: ApplicationDown
+      expr: up{job="task-manager"} == 0
+      for: 5m
+      labels:
+        severity: critical
+      annotations:
+        summary: "Task Manager unreachable"
+        description: "Service has been unavailable for 5+ minutes"
+    - alert: HighLatency
+      expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job="task-manager"}[5m])) > 0.5
+      for: 10m
+      labels:
+        severity: warning
+      annotations:
+        summary: "High latency on Task Manager"
+        description: "95th percentile > 500ms over 10m"
