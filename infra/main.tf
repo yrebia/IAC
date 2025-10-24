@@ -72,8 +72,8 @@ module "vpc" {
   vpc_name                = var.vpc_name
   cidr_block              = var.cidr_block
   subnet_cidr_block       = var.subnet_cidr_block
-  env                      = var.env
-  project_id               = var.project_id
+  env                     = var.env
+  project_id              = var.project_id
   map_public_ip_on_launch = true
 }
 
@@ -81,9 +81,9 @@ module "vpc" {
 module "eks" {
   source = "./eks"
 
-  cluster_name       = "${var.project_id}-${var.env}-cluster"
-  env                = var.env
-  project_id         = var.project_id
+  cluster_name = "${var.project_id}-${var.env}-cluster"
+  env          = var.env
+  project_id   = var.project_id
   # kubernetes_version = var.kubernetes_version
 
   # Use subnets from VPC module
