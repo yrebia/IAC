@@ -1,5 +1,5 @@
 project_id   = "team14-dev"
-region       = "2"
+region       = "eu-west-2"
 cluster_name = "tmgr-eks"
 env          = "dev"
 
