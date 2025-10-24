@@ -212,7 +212,8 @@ resource "aws_iam_role_policy" "terraform_policy" {
           "rds:*",
           "secretsmanager:*",
           "kms:*",
-          "logs:*"
+          "logs:*",
+          "route53:*"
         ],
         Resource = "*"
       }
