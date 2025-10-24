@@ -24,6 +24,13 @@ jobs:
       run:
         working-directory: infra
 
+    # 🌍 Variables d'environnement globales
+    env:
+      TF_VAR_env: dev
+      TF_VAR_region: eu-west-2
+      TF_VAR_aws_account_id: ${{ secrets.AWS_ACCOUNT_ID }}
+      AWS_REGION: eu-west-2
+
     steps:
       # 🧩 1. Checkout du code
       - name: Checkout repository
@@ -55,24 +62,30 @@ jobs:
       # 🧩 5. Terraform Plan (pour revue)
       - name: Terraform Plan (dev)
         id: plan
-        run: terraform plan -var-file="dev.tfvars" -out=tfplan
+        run: terraform plan -var-file="dev.tfvars" -out=tfplan -no-color
 
-      # 🧩 6. Apply - Étape 1 : réseau + DB + EKS
+      # 🧩 6. Terraform Apply (réseau + EKS + DB)
       - name: Terraform Apply (network + EKS + DB)
-        run: terraform apply -var-file="dev.tfvars" -auto-approve -input=false tfplan
+        run: terraform apply -auto-approve -input=false tfplan -no-color
 
-      # ☸️ Étape 7 : Installer kubectl
+      # ☸️ 7. Installer kubectl
       - name: Setup kubectl
         uses: azure/setup-kubectl@v4
         with:
           version: v1.28.2
 
-      # 🔐 Étape 8 : Configurer kubectl avec EKS
+      # 🔐 8. Configurer kubectl avec EKS
       - name: Configure kubectl with EKS
         run: |
           aws eks update-kubeconfig --region eu-west-2 --name team14-dev-dev-cluster
 
-      # 📈 Étape 11 : Déployer le monitoring stack via Helm
+      # 📈 9. Installer Helm
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.14.4
+
+      # 📊 10. Déployer le monitoring stack via Helm
       - name: Deploy monitoring stack
         run: |
           cd ../charts/monitoring
