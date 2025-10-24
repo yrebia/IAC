@@ -57,7 +57,7 @@ resource "aws_route_table" "main" {
 }
 
 resource "aws_route_table_association" "main" {
-  count          = 2
+  count          = 1  # Only subnet[0] is public
   subnet_id      = aws_subnet.main[count.index].id
   route_table_id = aws_route_table.main.id
 }
@@ -65,4 +65,29 @@ resource "aws_route_table_association" "main" {
 # Data source to get available AZs
 data "aws_availability_zones" "available" {
   state = "available"
+}
+
+resource "aws_eip" "nat" {
+  vpc = true
+}
+
+resource "aws_nat_gateway" "nat" {
+  allocation_id = aws_eip.nat.id
+  subnet_id     = aws_subnet.main[0].id # Use your public subnet (usually index 0)
+  depends_on    = [aws_eip.nat]
+}
+
+resource "aws_route_table" "private" {
+  vpc_id = aws_vpc.main.id
+}
+
+resource "aws_route" "private_nat" {
+  route_table_id         = aws_route_table.private.id
+  destination_cidr_block = "0.0.0.0/0"
+  nat_gateway_id         = aws_nat_gateway.nat.id
+}
+
+resource "aws_route_table_association" "private" {
+  subnet_id      = aws_subnet.main[1].id # Use your private subnet (usually index 1)
+  route_table_id = aws_route_table.private.id
 }
