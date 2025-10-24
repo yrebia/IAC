@@ -103,15 +103,3 @@ variable "vpc_cni_version" {
   type        = string
   default     = "v1.15.1-eksbuild.1"
 }
-
-variable "aws_account_id" {
-  description = "AWS Account ID"
-  type        = string
-}
-
-variable "students" {
-  description = "List of student objects with username"
-  type        = list(object({
-    username = string
-  }))
-}

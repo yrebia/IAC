@@ -84,8 +84,6 @@ module "eks" {
   cluster_name = "${var.project_id}-${var.env}-cluster"
   env          = var.env
   project_id   = var.project_id
-  aws_account_id = var.aws_account_id
-  students = var.students
   # kubernetes_version = var.kubernetes_version
 
   # Use subnets from VPC module
