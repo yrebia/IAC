@@ -2,8 +2,8 @@ project_id = "team1-prd"
 env        = "prod"
 region     = "eu-west-3"
 students = [
-  { username = "yanis" },
   { username = "pauline" },
+  { username = "yanis" },
   { username = "aldric" },
-  { username = "mathieu" },
+  { username = "mathieu" }
 ]
