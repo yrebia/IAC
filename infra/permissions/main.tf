@@ -74,6 +74,42 @@ resource "aws_iam_user_policy_attachment" "students_change_password" {
   ]
 }
 
+# Custom policy to allow IAM read operations for Terraform
+resource "aws_iam_policy" "students_iam_read" {
+  name        = "StudentsIAMReadAccess"
+  description = "Allow students to read IAM resources for Terraform state refresh"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "iam:GetRole",
+          "iam:GetRolePolicy",
+          "iam:ListAttachedRolePolicies",
+          "iam:ListRolePolicies",
+          "iam:GetPolicy",
+          "iam:GetPolicyVersion",
+          "iam:ListPolicyVersions",
+          "iam:GetOpenIDConnectProvider"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_user_policy_attachment" "students_iam_read" {
+  for_each   = aws_iam_user.students
+  user       = each.value.name
+  policy_arn = aws_iam_policy.students_iam_read.arn
+
+  depends_on = [
+    aws_iam_user.students
+  ]
+}
+
 # --- Assurer l’ordre de suppression ---
 # Terraform détruit les access_keys et policies AVANT les utilisateurs.
 # (grâce au depends_on implicite)

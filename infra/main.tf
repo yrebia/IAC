@@ -84,6 +84,8 @@ module "eks" {
   cluster_name = "${var.project_id}-${var.env}-cluster"
   env          = var.env
   project_id   = var.project_id
+  aws_account_id = var.aws_account_id
+  students = var.students
   # kubernetes_version = var.kubernetes_version
 
   # Use subnets from VPC module
@@ -160,4 +162,23 @@ resource "helm_release" "aws_load_balancer_controller" {
   }
 
   depends_on = [module.eks]
+}
+
+resource "aws_route53_zone" "main" {
+  name = "student-team14.local"
+}
+
+data "kubernetes_service" "api" {
+  metadata {
+    name      = "api-service"      # Replace with your app's service name
+    namespace = "app"              # Replace with your app's namespace
+  }
+}
+
+resource "aws_route53_record" "api" {
+  zone_id = aws_route53_zone.main.id
+  name    = "api-${var.env}"
+  type    = "CNAME"
+  ttl     = 300
+  records = [data.kubernetes_service.api.status[0].load_balancer[0].ingress[0].hostname]
 }
