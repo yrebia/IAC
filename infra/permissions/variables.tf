@@ -10,7 +10,7 @@ variable "env" {
 
 variable "region" {
   type        = string
-  description = "AWS region (e.g., eu-west-3)"
+  description = "AWS region (e.g., eu-west-2)"
 }
 
 variable "aws_account_id" {

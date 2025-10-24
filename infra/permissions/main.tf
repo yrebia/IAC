@@ -26,6 +26,7 @@ resource "aws_iam_user" "students" {
 
   name = each.value.username
 
+  # Ignore les changements externes (ex : console AWS)
   lifecycle {
     ignore_changes = all
   }
@@ -37,30 +38,58 @@ resource "aws_iam_user" "students" {
   }
 }
 
+# --- Clés d’accès pour les étudiants ---
+resource "aws_iam_access_key" "students" {
+  for_each = aws_iam_user.students
+  user     = each.value.name
+
+  # ✅ Supprimer la clé avant de supprimer l'utilisateur
+  lifecycle {
+    prevent_destroy = false
+  }
+
+  depends_on = [
+    aws_iam_user.students
+  ]
+}
+
 # --- Policies pour les étudiants ---
 resource "aws_iam_user_policy_attachment" "students_power" {
   for_each   = aws_iam_user.students
   user       = each.value.name
   policy_arn = "arn:aws:iam::aws:policy/PowerUserAccess"
+
+  depends_on = [
+    aws_iam_user.students
+  ]
 }
 
 resource "aws_iam_user_policy_attachment" "students_change_password" {
   for_each   = aws_iam_user.students
   user       = each.value.name
   policy_arn = "arn:aws:iam::aws:policy/IAMUserChangePassword"
+
+  depends_on = [
+    aws_iam_user.students
+  ]
 }
 
-# --- Clés d’accès pour les étudiants ---
-resource "aws_iam_access_key" "students" {
+# --- Assurer l’ordre de suppression ---
+# Terraform détruit les access_keys et policies AVANT les utilisateurs.
+# (grâce au depends_on implicite)
+resource "null_resource" "students_cleanup" {
   for_each = aws_iam_user.students
-  user     = each.value.name
+
+  depends_on = [
+    aws_iam_access_key.students,
+    aws_iam_user_policy_attachment.students_power,
+    aws_iam_user_policy_attachment.students_change_password
+  ]
 }
 
 ##########################################
 # Compte IAM Jérémie (existant)
 ##########################################
-
-# Utilisateur déjà présent dans AWS → data source
 data "aws_iam_user" "jeremie" {
   user_name = "jeremie"
 }
@@ -80,9 +109,15 @@ resource "aws_iam_access_key" "jeremie" {
 }
 
 resource "aws_iam_user_login_profile" "jeremie_console" {
-  user                    = data.aws_iam_user.jeremie.user_name
-  password_length         = 20
-  password_reset_required = true
+  user = data.aws_iam_user.jeremie.user_name
+
+  lifecycle {
+    ignore_changes = [
+      password,
+      password_reset_required,
+      password_length,
+    ]
+  }
 }
 
 ##########################################
@@ -140,57 +175,15 @@ resource "aws_iam_role_policy" "terraform_policy" {
         Sid    = "TerraformCoreAccess"
         Effect = "Allow"
         Action = [
-          # Terraform backend
           "s3:*",
           "dynamodb:*",
-
-          # Réseau / EC2
           "ec2:*",
-
-          # IAM pour création / lecture / gestion de rôles
-          "iam:CreateRole",
-          "iam:DeleteRole",
-          "iam:GetRole",
-          "iam:GetRolePolicy",
-          "iam:ListRolePolicies",
-          "iam:GetInstanceProfile",
-          "iam:GetPolicy",
-          "iam:GetPolicyVersion",
-          "iam:ListPolicies",
-          "iam:ListInstanceProfiles",
-          "iam:ListInstanceProfilesForRole",
-          "iam:ListRoles",
-          "iam:ListAttachedRolePolicies",
-          "iam:CreateInstanceProfile",
-          "iam:AddRoleToInstanceProfile",
-          "iam:RemoveRoleFromInstanceProfile",
-          "iam:DeleteInstanceProfile",
-          "iam:UpdateRole",
-          "iam:UpdateRoleDescription",
-          "iam:UpdateAssumeRolePolicy",
-          "iam:TagRole",
-          "iam:UntagRole",
-          "iam:TagPolicy",
-          "iam:UntagPolicy",
-          "iam:PassRole",
-          "iam:AttachRolePolicy",
-          "iam:DetachRolePolicy",
-          "iam:DeleteRolePolicy",
-          "iam:PutRolePolicy",
-          "iam:CreateServiceLinkedRole",
-
-          # EKS / RDS / Secrets
+          "iam:*",
           "eks:*",
           "rds:*",
           "secretsmanager:*",
-
-          # KMS / Logs
-          "kms:Decrypt",
-          "kms:DescribeKey",
-          "logs:CreateLogGroup",
-          "logs:DescribeLogGroups",
-          "logs:PutRetentionPolicy",
-          "logs:TagResource"
+          "kms:*",
+          "logs:*"
         ],
         Resource = "*"
       }
@@ -202,14 +195,17 @@ resource "aws_iam_role_policy" "terraform_policy" {
 # Fichiers credentials locaux
 ##########################################
 resource "local_file" "students_credentials" {
-  for_each = aws_iam_access_key.students
+  for_each = { for s in var.students : s.username => s }
+
   filename = "${path.module}/credentials/${each.key}_credentials.json"
+
   content = jsonencode({
     username          = each.key
-    access_key_id     = each.value.id
-    secret_access_key = each.value.secret
+    access_key_id     = aws_iam_access_key.students[each.key].id
+    secret_access_key = aws_iam_access_key.students[each.key].secret
     region            = var.region
   })
+
   file_permission = "0600"
 }
 

@@ -1,15 +1,6 @@
-##########################################
-# Variables pour le module EKS (simplifiées)
-##########################################
-
 variable "project_id" {
   type        = string
   description = "Project identifier"
-}
-
-variable "region" {
-  type        = string
-  description = "AWS region"
 }
 
 variable "env" {
@@ -18,38 +9,97 @@ variable "env" {
 }
 
 variable "cluster_name" {
+  description = "Name of the EKS cluster"
   type        = string
-  description = "EKS cluster name"
 }
 
-variable "vpc_id" {
+variable "kubernetes_version" {
+  description = "Kubernetes version for EKS cluster"
   type        = string
-  description = "VPC ID used by the cluster"
+  default     = "1.28"
 }
 
-variable "subnet_id" {
-  type        = string
-  description = "Application subnet ID"
+variable "subnet_ids" {
+  description = "List of subnet IDs for EKS cluster"
+  type        = list(string)
 }
 
-variable "db_subnet_id" {
-  type        = string
-  description = "Database subnet ID"
+variable "private_subnet_ids" {
+  description = "List of private subnet IDs for node groups"
+  type        = list(string)
 }
 
-variable "github_actions_role_arn" {
-  type        = string
-  description = "IAM Role ARN for GitHub Actions access"
+variable "public_access_cidrs" {
+  description = "List of CIDR blocks for public API access"
+  type        = list(string)
+  default     = ["0.0.0.0/0"]
 }
 
-variable "students" {
-  description = "Liste des étudiants pour accès EKS"
-  type = list(object({
-    username = string
-  }))
+# GitHub Runners Node Group Variables
+variable "runner_instance_types" {
+  description = "Instance types for GitHub runners node group"
+  type        = list(string)
+  default     = ["t3.medium", "t3.large"]
 }
 
-variable "aws_account_id" {
-  description = "AWS Account ID pour construire les ARN IAM"
+variable "runner_desired_size" {
+  description = "Desired number of GitHub runner nodes"
+  type        = number
+  default     = 1
+}
+
+variable "runner_max_size" {
+  description = "Maximum number of GitHub runner nodes"
+  type        = number
+  default     = 5
+}
+
+variable "runner_min_size" {
+  description = "Minimum number of GitHub runner nodes"
+  type        = number
+  default     = 0
+}
+
+# Application Node Group Variables
+variable "app_instance_types" {
+  description = "Instance types for application node group"
+  type        = list(string)
+  default     = ["t3.medium"]
+}
+
+variable "app_desired_size" {
+  description = "Desired number of application nodes"
+  type        = number
+  default     = 2
+}
+
+variable "app_max_size" {
+  description = "Maximum number of application nodes"
+  type        = number
+  default     = 10
+}
+
+variable "app_min_size" {
+  description = "Minimum number of application nodes"
+  type        = number
+  default     = 1
+}
+
+# EKS Add-on Versions
+variable "coredns_version" {
+  description = "CoreDNS add-on version"
   type        = string
+  default     = "v1.10.1-eksbuild.5"
+}
+
+variable "kube_proxy_version" {
+  description = "kube-proxy add-on version"
+  type        = string
+  default     = "v1.28.2-eksbuild.2"
+}
+
+variable "vpc_cni_version" {
+  description = "VPC CNI add-on version"
+  type        = string
+  default     = "v1.15.1-eksbuild.1"
 }

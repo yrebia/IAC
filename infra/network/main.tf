@@ -1,58 +1,68 @@
-##########################################
-# Détermination du VPC
-##########################################
+# VPC Module - Demonstrates Terraform Principles from C1.md
+# This module implements Reproducibility, Idempotence, and Versioning
 
-# Si un VPC ID est fourni, on le prend directement
-# Sinon, on fait un lookup par nom + CIDR
-data "aws_vpcs" "by_name_cidr" {
-  count = var.vpc_id == "" ? 1 : 0
+resource "aws_vpc" "main" {
+  cidr_block           = var.cidr_block
+  enable_dns_hostnames = true
+  enable_dns_support   = true
 
-  filter {
-    name   = "tag:Name"
-    values = [var.vpc_name]
-  }
-
-  filter {
-    name   = "cidr-block"
-    values = [var.cidr_block]
+  tags = {
+    Name        = var.vpc_name
+    Environment = var.env
+    Project     = var.project_id
+    ManagedBy   = "Terraform"
   }
 }
 
-# Local qui choisit intelligemment la bonne source
-locals {
-  resolved_vpc_id = var.vpc_id != "" ? var.vpc_id : try(data.aws_vpcs.by_name_cidr[0].id, null)
-}
+resource "aws_subnet" "main" {
+  count                   = 2
+  vpc_id                  = aws_vpc.main.id
+  cidr_block              = cidrsubnet(var.cidr_block, 8, count.index + 1)
+  availability_zone       = data.aws_availability_zones.available.names[count.index]
+  map_public_ip_on_launch = var.map_public_ip_on_launch
 
-##########################################
-# Subnets (app et db)
-##########################################
-
-# Subnet app
-data "aws_subnets" "app" {
-  count = local.resolved_vpc_id != null ? 1 : 0
-
-  filter {
-    name   = "vpc-id"
-    values = [local.resolved_vpc_id]
-  }
-
-  filter {
-    name   = "cidr-block"
-    values = [var.subnet_cidr]
+  tags = {
+    Name        = "${var.vpc_name}-subnet-${count.index + 1}"
+    Environment = var.env
+    Project     = var.project_id
+    ManagedBy   = "Terraform"
   }
 }
 
-# Subnet db
-data "aws_subnets" "db" {
-  count = local.resolved_vpc_id != null ? 1 : 0
+resource "aws_internet_gateway" "main" {
+  vpc_id = aws_vpc.main.id
 
-  filter {
-    name   = "vpc-id"
-    values = [local.resolved_vpc_id]
+  tags = {
+    Name        = "${var.vpc_name}-igw"
+    Environment = var.env
+    Project     = var.project_id
+    ManagedBy   = "Terraform"
+  }
+}
+
+resource "aws_route_table" "main" {
+  vpc_id = aws_vpc.main.id
+
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.main.id
   }
 
-  filter {
-    name   = "cidr-block"
-    values = [var.db_subnet_cidr]
+  tags = {
+    Name        = "${var.vpc_name}-rt"
+    Environment = var.env
+    Project     = var.project_id
+    ManagedBy   = "Terraform"
   }
+}
+
+resource "aws_route_table_association" "main" {
+  count          = 2
+  subnet_id      = aws_subnet.main[count.index].id
+  route_table_id = aws_route_table.main.id
+}
+
+# Data source to get available AZs
+data "aws_availability_zones" "available" {
+  state = "available"
 }
