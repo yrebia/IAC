@@ -57,7 +57,7 @@ resource "aws_route_table" "main" {
 }
 
 resource "aws_route_table_association" "main" {
-  count          = 1  # Only subnet[0] is public
+  count          = 1 # Only subnet[0] is public
   subnet_id      = aws_subnet.main[count.index].id
   route_table_id = aws_route_table.main.id
 }
