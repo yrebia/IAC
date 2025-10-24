@@ -166,19 +166,32 @@ resource "aws_route53_zone" "main" {
   name = "student-team14.local"
 }
 
-# data "kubernetes_service" "api" {
-#   metadata {
-#     name      = "api-service"      # Replace with your app's service name
-#     namespace = "app"              # Replace with your app's namespace
-#   }
-#   depends_on = [helm_release.task_manager] # or your app's Helm release resource
-# }
+resource "helm_release" "task_manager" {
+  name       = "task-manager"
+  chart      = "../charts/task-manager"
+  namespace  = "app"
 
-# resource "aws_route53_record" "api" {
-#   zone_id = aws_route53_zone.main.id
-#   name    = "api-${var.env}"
-#   type    = "CNAME"
-#   ttl     = 300
-#   records = [data.kubernetes_service.api.status[0].load_balancer[0].ingress[0].hostname]
-#   depends_on = [data.kubernetes_service.api]
-# }
+  create_namespace = true
+
+  depends_on = [
+    module.eks,
+    helm_release.aws_load_balancer_controller
+  ]
+}
+
+data "kubernetes_service" "api" {
+  metadata {
+    name      = "api-service"      # Replace with your app's service name
+    namespace = "app"              # Replace with your app's namespace
+  }
+  depends_on = [helm_release.task_manager] # or your app's Helm release resource
+}
+
+resource "aws_route53_record" "api" {
+  zone_id = aws_route53_zone.main.id
+  name    = "api-${var.env}"
+  type    = "CNAME"
+  ttl     = 300
+  records = [data.kubernetes_service.api.status[0].load_balancer[0].ingress[0].hostname]
+  depends_on = [data.kubernetes_service.api]
+}

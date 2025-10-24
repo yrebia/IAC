@@ -133,10 +133,11 @@ output "task_manager_url" {
   value       = "https://api-${var.env}.student-team14.local"
 }
 
-output "grafana_url" {
-  description = "URL for Grafana monitoring dashboard"
-  value       = "https://grafana-${var.env}.student-team14.local"
-}
+# Monitoring disabled
+# output "grafana_url" {
+#   description = "URL for Grafana monitoring dashboard"
+#   value       = "https://grafana-${var.env}.student-team14.local"
+# }
 
 # Kubernetes Access Information
 output "kubectl_config_command" {
