@@ -19,6 +19,8 @@ db_name              = "appdbdev"
 db_username          = "dev"
 vpc_id               = "vpc-021490dfd686bd62e"
 
+enable_permissions = false
+
 students = [
   { username = "pauline" },
   { username = "yanis" },
