@@ -289,22 +289,3 @@ resource "aws_iam_openid_connect_provider" "eks" {
     Project     = var.project_id
   }
 }
-
-resource "aws_eks_access_entry" "students" {
-  for_each          = { for s in var.students : s.username => s }
-  cluster_name      = aws_eks_cluster.main.name
-  principal_arn     = "arn:aws:iam::${var.aws_account_id}:user/${each.value.username}"
-  kubernetes_groups = []
-  type              = "STANDARD"
-}
-
-resource "aws_eks_access_policy_association" "students_admin" {
-  for_each      = aws_eks_access_entry.students
-  cluster_name  = aws_eks_cluster.main.name
-  principal_arn = each.value.principal_arn
-  policy_arn    = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
-
-  access_scope {
-    type = "cluster"
-  }
-}

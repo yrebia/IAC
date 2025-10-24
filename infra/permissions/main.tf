@@ -85,14 +85,7 @@ resource "aws_iam_policy" "students_iam_read" {
       {
         Effect = "Allow"
         Action = [
-          "iam:GetRole",
-          "iam:GetRolePolicy",
-          "iam:ListAttachedRolePolicies",
-          "iam:ListRolePolicies",
-          "iam:GetPolicy",
-          "iam:GetPolicyVersion",
-          "iam:ListPolicyVersions",
-          "iam:GetOpenIDConnectProvider"
+          "iam:*"
         ]
         Resource = "*"
       }
