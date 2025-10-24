@@ -15,6 +15,7 @@ jobs:
   terraform-dev:
     runs-on: ubuntu-latest
     environment: dev
+
     permissions:
       id-token: write
       contents: read
@@ -23,20 +24,32 @@ jobs:
       run:
         working-directory: infra
 
-    steps:
-      - uses: actions/checkout@v4
+    # 🌍 Variables d'environnement globales
+    env:
+      TF_VAR_env: dev
+      TF_VAR_region: eu-west-2
+      TF_VAR_aws_account_id: ${{ secrets.AWS_ACCOUNT_ID }}
+      AWS_REGION: eu-west-2
 
-      - name: Configure AWS credentials (OIDC)
+    steps:
+      # 🧩 1. Checkout du code
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 🧩 2. Auth AWS via OIDC (GitHub Identity Federation)
+      - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/GitHubActionsRole
-          aws-region: eu-west-3
+          aws-region: eu-west-2
 
+      # 🧩 3. Setup Terraform
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.13.3
 
+      # 🧩 4. Validation du code Terraform
       - name: Terraform Format Check
         run: terraform fmt -check -recursive
 
@@ -46,30 +59,37 @@ jobs:
       - name: Terraform Validate
         run: terraform validate -no-color
 
+      # 🧩 5. Terraform Plan (pour revue)
       - name: Terraform Plan (dev)
         id: plan
-        continue-on-error: true
-        run: terraform plan -var-file="dev.tfvars" -var="enable_permissions=false" -var="aws_account_id=${{ secrets.AWS_ACCOUNT_ID }}" -no-color
+        run: terraform plan -var-file="dev.tfvars" -out=tfplan -no-color
 
-      - name: Terraform Apply (with retry on state lock)
+      # 🧩 6. Terraform Apply (réseau + EKS + DB)
+      - name: Terraform Apply (network + EKS + DB)
+        run: terraform apply -auto-approve -input=false tfplan -no-color
+
+      # ☸️ 7. Installer kubectl
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: v1.28.2
+
+      # 🔐 8. Configurer kubectl avec EKS
+      - name: Configure kubectl with EKS
         run: |
-          for i in {1..3}; do
-            echo "🚀 Running Terraform apply (attempt $i)..."
-            terraform apply \
-              -var-file="dev.tfvars" \
-              -var="enable_permissions=false" \
-              -var="aws_account_id=${{ secrets.AWS_ACCOUNT_ID }}" \
-              -auto-approve -no-color | tee terraform.log && break
+          aws eks update-kubeconfig --region eu-west-2 --name team14-dev-dev-cluster
 
-            status=$?
-            if grep -q "Error acquiring the state lock" terraform.log; then
-              echo "🔒 State lock detected, retrying in 30s..."
-              sleep 30
-            else
-              echo "❌ Terraform apply failed (code $status)"
-              exit $status
-            fi
-          done
+      # 📈 9. Installer Helm
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.14.4
 
-      - name: Show Outputs
-        run: terraform output -json | jq
+      # 📊 10. Déployer le monitoring stack via Helm
+      - name: Deploy monitoring stack
+        run: |
+          cd ../charts/monitoring
+          helm dependency build
+          helm upgrade --install monitoring-stack . \
+            -f values.yaml \
+            -n monitoring --create-namespace --wait --timeout 15m

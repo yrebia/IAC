@@ -1,0 +1,31 @@
+{{- if .Values.networkPolicy }}
+{{- if .Values.networkPolicy.allowMonitoring }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "task-manager.fullname" . }}-allow-monitoring
+  labels:
+    {{- include "task-manager.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "task-manager.selectorLabels" . | nindent 6 }}
+  policyTypes:
+  - Ingress
+  ingress:
+  # Autoriser Prometheus à scraper les métriques
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: monitoring
+    ports:
+    - protocol: TCP
+      port: {{ .Values.service.targetPort }}
+  # Autoriser les connexions internes au cluster
+  - from:
+    - namespaceSelector: {}
+    ports:
+    - protocol: TCP
+      port: {{ .Values.service.targetPort }}
+{{- end }}
+{{- end }}

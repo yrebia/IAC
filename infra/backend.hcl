@@ -1,3 +1,3 @@
-bucket = "team-terraform-state-iac-projet-etu1-dev"
+bucket = "team-terraform-state-iac-projet-team14"
 key    = "iac/terraform.tfstate"
-region = "eu-west-3"
+region = "eu-west-2"

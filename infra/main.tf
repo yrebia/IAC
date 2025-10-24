@@ -1,180 +1,163 @@
-##########################################
-# Terraform & Providers
-##########################################
 terraform {
-  required_version = ">= 1.6.0"
-
+  required_version = ">= 1.0"
   required_providers {
     aws = {
       source  = "hashicorp/aws"
       version = "~> 5.0"
     }
-    kubernetes = {
-      source  = "hashicorp/kubernetes"
-      version = "~> 2.29"
-    }
     helm = {
       source  = "hashicorp/helm"
-      version = "~> 2.13"
+      version = "~> 2.11"
+    }
+    kubernetes = {
+      source  = "hashicorp/kubernetes"
+      version = "~> 2.23"
     }
   }
 
-  backend "s3" {}
+  # Remote backend configuration for team collaboration
+  # The bucket must be created manually before terraform init
+  # Backend config is loaded via -backend-config flag to support multiple environments
+
+  backend "s3" {
+    # Configuration loaded from ../backends/{env}.config files
+  }
 }
 
+# Configure AWS Provider
 provider "aws" {
   region = var.region
+
+  # Default tags applied to all resources
+  default_tags {
+    tags = {
+      ManagedBy   = "Terraform"
+      Environment = var.env
+      Project     = var.project_id
+      Team        = "Student-Team14"
+    }
+  }
 }
 
-##########################################
-# Locals - Safe reference for permissions
-##########################################
-locals {
-  github_actions_role_arn = (
-    var.enable_permissions && length(module.permissions_enabled) > 0
-  ) ? module.permissions_enabled[0].github_actions_role_arn : null
+# Configure Kubernetes Provider
+provider "kubernetes" {
+  host                   = module.eks.cluster_endpoint
+  cluster_ca_certificate = base64decode(module.eks.cluster_ca_certificate)
+
+  exec {
+    api_version = "client.authentication.k8s.io/v1beta1"
+    command     = "aws"
+    args        = ["eks", "get-token", "--cluster-name", module.eks.cluster_name]
+  }
 }
 
-##########################################
-# Module Network
-##########################################
-module "network" {
+# Configure Helm Provider
+provider "helm" {
+  kubernetes {
+    host                   = module.eks.cluster_endpoint
+    cluster_ca_certificate = base64decode(module.eks.cluster_ca_certificate)
+
+    exec {
+      api_version = "client.authentication.k8s.io/v1beta1"
+      command     = "aws"
+      args        = ["eks", "get-token", "--cluster-name", module.eks.cluster_name]
+    }
+  }
+}
+
+# Use the VPC module
+module "vpc" {
   source = "./network"
 
-  vpc_name       = var.vpc_name
-  cidr_block     = var.cidr_block
-  subnet_cidr    = var.subnet_cidr
-  db_subnet_cidr = var.db_subnet_cidr
-  vpc_id         = var.vpc_id
+  vpc_name                = var.vpc_name
+  cidr_block              = var.cidr_block
+  subnet_cidr_block       = var.subnet_cidr_block
+  env                     = var.env
+  project_id              = var.project_id
+  map_public_ip_on_launch = true
 }
 
-##########################################
-# Module EKS (Cluster)
-##########################################
+# EKS Cluster Module - C4.md Implementation
 module "eks" {
   source = "./eks"
 
-  project_id   = var.project_id
-  region       = var.region
-  cluster_name = var.cluster_name
+  cluster_name = "${var.project_id}-${var.env}-cluster"
   env          = var.env
+  project_id   = var.project_id
+  # kubernetes_version = var.kubernetes_version
 
-  # Permissions IAM (optionnelles)
-  github_actions_role_arn = local.github_actions_role_arn
-  students                = var.students
-  aws_account_id          = var.aws_account_id
+  # Use subnets from VPC module
+  subnet_ids         = module.vpc.subnet_ids
+  private_subnet_ids = module.vpc.subnet_ids
 
-  # Réseau
-  vpc_id       = module.network.vpc_id
-  subnet_id    = module.network.app_subnet_id
-  db_subnet_id = module.network.db_subnet_id
+  # GitHub Runners configuration
+  # runner_instance_types = var.runner_instance_types
+  # runner_desired_size   = var.runner_desired_size
+  # runner_max_size       = var.runner_max_size
+  # runner_min_size       = var.runner_min_size
+
+  # Application configuration
+  # app_instance_types = var.app_instance_types
+  # app_desired_size   = var.app_desired_size
+  # app_max_size       = var.app_max_size
+  # app_min_size       = var.app_min_size
+
+  depends_on = [module.vpc]
 }
 
-##########################################
-# Module Database (RDS)
-##########################################
-module "database" {
-  source = "./database"
+# RDS Database Module - C4.md Implementation
+# module "rds" {
+#   source = "../modules/rds"
 
-  project_id = var.project_id
-  vpc_id     = module.network.vpc_id
-  subnet_ids = [module.network.app_subnet_id, module.network.db_subnet_id]
+#   db_name      = "${var.project_name}-${var.environment}"
+#   environment  = var.environment
+#   project_name = var.project_name
 
-  db_engine            = var.db_engine
-  db_engine_version    = var.db_engine_version
-  db_instance_class    = var.db_instance_class
-  db_allocated_storage = var.db_allocated_storage
-  db_name              = var.db_name
-  db_username          = var.db_username
+#   vpc_id              = module.vpc.vpc_id
+#   subnet_ids          = module.vpc.subnet_ids
+#   allowed_cidr_blocks = [var.cidr_block]
 
-  depends_on = [module.eks]
-}
+#   postgres_version      = var.postgres_version
+#   instance_class        = var.db_instance_class
+#   allocated_storage     = var.db_allocated_storage
+#   max_allocated_storage = var.db_max_allocated_storage
 
-##########################################
-# Namespace Kubernetes
-##########################################
-resource "kubernetes_namespace" "app" {
-  metadata {
-    name = "app"
+#   backup_retention_period = var.db_backup_retention_period
+#   deletion_protection     = var.db_deletion_protection
+#   skip_final_snapshot     = var.db_skip_final_snapshot
+
+#   depends_on = [module.vpc]
+# }
+
+# Helm Releases - C4.md Implementation
+
+# Deploy AWS Load Balancer Controller
+resource "helm_release" "aws_load_balancer_controller" {
+  name       = "aws-load-balancer-controller"
+  repository = "https://aws.github.io/eks-charts"
+  chart      = "aws-load-balancer-controller"
+  version    = "1.6.2"
+  namespace  = "kube-system"
+
+  set {
+    name  = "clusterName"
+    value = module.eks.cluster_name
+  }
+
+  set {
+    name  = "serviceAccount.create"
+    value = "true"
+  }
+
+  set {
+    name  = "serviceAccount.name"
+    value = "aws-load-balancer-controller"
+  }
+
+  set {
+    name  = "serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn"
+    value = module.eks.load_balancer_controller_role_arn
   }
 
   depends_on = [module.eks]
-}
-
-##########################################
-# Secret DB (depuis AWS Secrets Manager)
-##########################################
-data "aws_secretsmanager_secret_version" "db_master" {
-  secret_id = module.database.db_secret_arn
-}
-
-locals {
-  db_creds = jsondecode(data.aws_secretsmanager_secret_version.db_master.secret_string)
-}
-
-resource "kubernetes_secret" "db" {
-  metadata {
-    name      = "task-manager-db"
-    namespace = kubernetes_namespace.app.metadata[0].name
-  }
-
-  data = {
-    DB_HOST      = module.database.db_endpoint
-    DB_PORT      = "5432"
-    DB_NAME      = var.db_name
-    DB_USER      = local.db_creds.username
-    DB_PASSWORD  = local.db_creds.password
-    DATABASE_URL = "postgresql://${local.db_creds.username}:${local.db_creds.password}@${module.database.db_endpoint}:5432/${var.db_name}"
-  }
-
-  type = "Opaque"
-
-  depends_on = [
-    kubernetes_namespace.app,
-    module.database
-  ]
-}
-
-##########################################
-# Helm Release (Chart Task Manager)
-##########################################
-resource "helm_release" "task_manager" {
-  name             = "task-manager"
-  namespace        = kubernetes_namespace.app.metadata[0].name
-  chart            = "${path.module}/../charts/task-manager"
-  create_namespace = false
-
-  values = [file("${path.module}/../charts/task-manager/values.yaml")]
-
-  wait            = true
-  timeout         = 600
-  force_update    = true
-  atomic          = true
-  cleanup_on_fail = true
-
-  depends_on = [
-    kubernetes_secret.db,
-    module.eks
-  ]
-}
-
-##########################################
-# Module Permissions (facultatif)
-##########################################
-module "permissions_enabled" {
-  source = "./permissions"
-
-  count = var.enable_permissions ? 1 : 0
-
-  project_id     = var.project_id
-  env            = var.env
-  region         = var.region
-  aws_account_id = var.aws_account_id
-
-  students = [
-    { username = "student1" },
-    { username = "student2" },
-    { username = "student3" },
-    { username = "student4" }
-  ]
 }
