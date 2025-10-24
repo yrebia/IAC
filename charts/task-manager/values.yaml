@@ -12,11 +12,11 @@ service:
   # Labels pour ServiceMonitor
   labels:
     app.kubernetes.io/name: task-manager
-  # Annotations pour exposer métriques
-  annotations:
-    prometheus.io/scrape: "true"
-    prometheus.io/port: "8080"
-    prometheus.io/path: "/metrics"
+  # Annotations pour exposer métriques - DISABLED
+  # annotations:
+  #   prometheus.io/scrape: "true"
+  #   prometheus.io/port: "8080"
+  #   prometheus.io/path: "/metrics"
 
 ingress:
   enabled: true
@@ -65,7 +65,7 @@ rbac:
 networkPolicy:
   allowDNS: true
   allowFromKubeSystem: true
-  allowMonitoring: true
+  allowMonitoring: false  # DISABLED - monitoring disabled
 
   allowDB:
     enabled: true

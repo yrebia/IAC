@@ -29,26 +29,30 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
 
     host: str = "0.0.0.0"
-    port: int = 443
+    port: int = 8080
 
     ssl_enabled: bool = False
     ssl_cert_path: str = "certs/cert.pem"
     ssl_key_path: str = "certs/key.pem"
 
-    database_url: str = ""
+    database_host: str = "localhost"
+    database_port: int = 5432
+    database_name: str = "appdbdev"
+    database_user: str = "dev"
+    database_password: str = "password"
 
     cors_enabled: bool = True
     cors_origins: str = "*"
-
-    bearer_token: str = ""
-
 
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
         case_sensitive=False,
-        extra="ignore"
+        extra="ignore",
+        env_prefix=""
     )
+
+    bearer_token: str = ""
 
 
 settings = Settings()
