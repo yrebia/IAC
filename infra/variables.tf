@@ -115,6 +115,12 @@ variable "db_username" {
   default     = "admin"
 }
 
+variable "db_port" {
+  type        = string
+  description = "Port de la base de données"
+  default     = "5432"
+}
+
 variable "enable_permissions" {
   type        = bool
   description = "Activer le module permissions"

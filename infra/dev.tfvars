@@ -17,6 +17,7 @@ db_instance_class    = "db.t3.micro"
 db_allocated_storage = 20
 db_name              = "appdbdev"
 db_username          = "dev"
+db_port              = "5432"
 vpc_id               = "vpc-021490dfd686bd62e"
 
 enable_permissions = false

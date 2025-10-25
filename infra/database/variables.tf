@@ -8,3 +8,8 @@ variable "db_instance_class" { type = string }
 variable "db_allocated_storage" { type = number }
 variable "db_name" { type = string }
 variable "db_username" { type = string }
+
+variable "allowed_cidr_blocks" {
+	description = "CIDRs autorisés à se connecter à Postgres"
+	type        = list(string)
+}

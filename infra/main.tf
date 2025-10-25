@@ -105,6 +105,60 @@ module "eks" {
   depends_on = [module.vpc]
 }
 
+# Database Module (RDS)
+module "database" {
+  source = "./database"
+
+  project_id           = var.project_id
+  vpc_id               = module.vpc.vpc_id
+  subnet_ids           = module.vpc.subnet_ids
+  db_engine            = var.db_engine
+  db_engine_version    = var.db_engine_version
+  db_instance_class    = var.db_instance_class
+  db_allocated_storage = var.db_allocated_storage
+  db_name              = var.db_name
+  db_username          = var.db_username
+  allowed_cidr_blocks  = module.vpc.subnet_cidr_blocks
+
+  depends_on = [module.vpc]
+}
+
+# Namespace applicatif (existant)
+data "kubernetes_namespace" "app" {
+  metadata { name = "app" }
+  # S'assure que le cluster est prêt avant la lecture
+  depends_on = [module.eks]
+}
+
+# Récupération du mot de passe maître géré par AWS Secrets Manager
+data "aws_secretsmanager_secret_version" "db_master" {
+  secret_id = module.database.db_secret_arn
+}
+
+locals {
+  db_master_secret = jsondecode(data.aws_secretsmanager_secret_version.db_master.secret_string)
+  db_password = local.db_master_secret["password"]
+  db_host     = split(":", chomp(module.database.db_endpoint))[0]
+}
+
+# Secret K8s attendu par le chart (HOST + PASSWORD)
+resource "kubernetes_secret" "task_manager_db" {
+  metadata {
+    name      = "task-manager-db"
+    namespace = "app"
+  }
+  data = {
+    DATABASE_HOST     = local.db_host
+    DATABASE_PASSWORD = local.db_password
+  }
+  type = "Opaque"
+
+  depends_on = [
+    module.database,
+    helm_release.task_manager
+  ]
+}
+
 # RDS Database Module - C4.md Implementation
 # module "rds" {
 #   source = "../modules/rds"
@@ -172,6 +226,26 @@ resource "helm_release" "task_manager" {
   namespace  = "app"
 
   create_namespace = true
+
+  set {
+    name = "db.name"
+    value = var.db_name
+  }
+
+  set {
+    name = "db.username"
+    value = var.db_username
+  }
+
+  set {
+    name = "db.port"
+    value = var.db_port
+  }
+
+  set {
+    name  = "db.useDatabaseUrl"
+    value = "false"
+  }
 
   depends_on = [
     module.eks,
